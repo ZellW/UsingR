@@ -41,3 +41,23 @@ l <- split(ToothGrowth$len, ToothGrowth$dose)
 groupmeans <- c(mean (l[[1]]), mean(l[[2]]), mean(l[[3]]))
 cor(c(0.5, 1, 2), groupmeans)
 #correlations formed from averages are typically closer to 1 or -1 than when all the data is considered individually  see page 11 of UsingR
+
+cor(SAT$salary, SAT$total)#no correlation - is is Negative
+#perc is the percentage of stidents that took the SAT - let's evaluate the effect of this:
+plot(total ~ salary, data=SAT)# no correlation evident
+points(total ~ salary, SAT, subset = perc<10, pch=15)#squares
+points(total ~ salary, SAT, subset = perc>40, pch=16)#solid
+#correlation for each subgroup appears positive
+cor10 <- SAT %>% filter(perc<10) %>% select(salary, total)
+corMiddle <- SAT %>% filter(perc>10, perc<40) %>% select(salary, total)
+cor40 <- SAT %>% filter(perc>40) %>% select(salary, total)
+c(less=cor(cor10$total, cor10$salary), middle=cor(corMiddle$total, corMiddle$salary), cor(cor40$total, cor40$salary))#returns all positive
+#Correlations for all subgroups are positive when overall is negative.  
+#Simpson's Paradox (when a trend for subgroups changes when data is aggregated.
+
+#Linear Regression
+residual <- lm(maxrate ~ age, data=heartrate)#to determine max heart rate by age, tradition is to 220- age (a line slope -1 intercept 220)
+plot(maxrate ~ age, heartrate)
+abline(residual)
+
+
