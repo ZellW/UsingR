@@ -31,7 +31,7 @@ plot(neck ~ wrist, fat)
 plot(Speed ~ Expt, data=michelson)#compare to below
 plot(summary(Speed ~ Expt, data=michelson))#Look at summary(Speed ~ Expt, data=michelson) and summary(height ~ weight, data=kid.weights) - interesting
 
-#Correlation
+#Paired Data (Numerical)P 102
 cor(fat$wrist, fat$neck) #strongly correlated
 cor(fat$wrist, fat$height) #mildly correlated
 cor(fat$age, fat$ankle) #uncorrelated 
@@ -57,7 +57,21 @@ c(less=cor(cor10$total, cor10$salary), middle=cor(corMiddle$total, corMiddle$sal
 
 #Linear Regression
 residual <- lm(maxrate ~ age, data=heartrate)#to determine max heart rate by age, tradition is to 220- age (a line slope -1 intercept 220)
+# residuals = observed - expected - sum of all residuals theortically add to 0
 plot(maxrate ~ age, heartrate)
 abline(residual)
+#can use the predict function to calculate results from a lm:
+predict(residual, data.frame(age=c(30, 40)))
+plot(residual)#pretty cool -s ee all teh plots that are created
 
+#Paired Bivariate Data:  categorical data (P 132)
+#Usually involves counts of 2 categories - The distribution of an individual variable is called marginal distribution
+#Sometimes you need to build the data - matrix is useful
+seatbelts <- matrix(c(56, 2, 8, 16), nrow=2)
+dimnames(seatbelts) <- list(parent=c("buckled", "unbuckled"), child=c("buckled", "unbuckled"))
+#2 way tables can also be made with the table function
+gradeTable <- table(grades$prev, grades$grade)
+margin.table(seatbelts, margin=1)# margin 1 is rows; 2 for columns - this adds the row numbers "
+margin.table(gradeTable, margin=2)
+addmargins(seatbelts)
 
