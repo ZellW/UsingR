@@ -24,3 +24,17 @@ margin.table(seatbelts, margin=1)# margin 1 is rows; 2 for columns - this adds t
 margin.table(gradeTable, margin=2)
 addmargins(seatbelts)
 
+#Automatically chage table data into a proportion by column or row:
+table(grades$prev, grades$grade)
+prop.table(table(grades$prev, grades$grade), margin=1)*100 #Devides each cell by the total count for the row where the cell is like 15/28 for cell (1,1)
+
+xtabs(count ~ Whorls + Loops, Fingerprints)
+plot(count ~ Whorls + Loops, Fingerprints) #did it just for fun
+xtabs(~ Origin + Type, Cars93)#since nthing on left hand side or formula, it automatically tallies the data!
+# the period - . - can be usedas shorthand notation for all variables in the data set not speficied on theleft hand side.
+xtabs(count ~ ., Fingerprints)#since there are only 3 firleds in the dataset and count is specified then the 2 remaining fields (Whorls and Loops) 
+#are assumed by the period shorthand
+
+
+
+ 
