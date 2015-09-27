@@ -75,3 +75,54 @@ margin.table(seatbelts, margin=1)# margin 1 is rows; 2 for columns - this adds t
 margin.table(gradeTable, margin=2)
 addmargins(seatbelts)
 
+barplot(seatbelts, xlab="Parent", main="Child Seat Belt Usage") #stacked bars
+barplot(seatbelts, xlab="Parent", main="Child Seat Belt Usage", beside=TRUE)
+#to switch the data and use the rows to be the primary distribution, transpose:
+t(barplot(seatbelts, xlab="Child"))
+#to use proportions rather than counts for the y axis, use the prop.table
+barplot(prop.table(seatbelts), xlab="Parent", main="Child Seat Belt Usage") #stacked bars
+
+#mosaic plots are useful for 2 or more categorical variables (p 141)
+#Using the Titanic data, it is a table that needs to be converted to a data frame (therwise all cols are chr type)
+titanic <-  as.data.frame(Titanic)#includes 4 factors and 1 column of numbers for Suriviors
+mosaicplot(xtabs(Freq ~ Sex, titanic))
+mosaicplot(xtabs(Freq ~ Sex + Survived, titanic))
+mosaicplot(xtabs(Freq ~ Sex + Survived + Class, titanic))
+mosaicplot(xtabs(Freq ~ Class +Sex + Survived, titanic))#Order makes a difference!
+mosaicplot(xtabs(Freq ~  Survived + Class, titanic))
+#You can make ordered data out of factors
+Survived <- rep(titanic$Survived, titanic$Freq)#makes a factor class of Yes and No for each of the 2201 passengers
+Survived <- ordered(Survived) #ordered No then Yes
+Class <- rep(titanic$Class, titanic$Freq)
+Class <- ordered(Class)
+#Ordered factors can be coerced into numeric data to allow fetting correlation:
+cor(as.numeric(Survived), as.numeric(Class), method="kendall")
+#negative answer is because of the ordering of the class with 1st being 1 and crew 4#kendall is used with cor with data 
+#that can be ranked like ordered factors
+
+#Multivariate Graphics p 204 UsingR
+p4 <- ggplot(Cars93, aes(x=MPG.highway)) + stat_bin(binwidth=5)#binwidth has a defalt of length or range / 30
+#Rather than display counts, you can display proportions - a density plot:
+p5 <- ggplot(Cars93, aes(x=MPG.highway, y=..density..)) + stat_bin(binwidth=5)
+#Explicit use of stat_bin is not required.  geom_histogram combines stat_bin and geom_bar
+p6 <- ggplot(Cars93, aes(x=MPG.highway)) + geom_histogram(bin=5)
+#Similarly, density plots can be made like this:
+p7 <- ggplot(Cars93, aes(x=MPG.highway, y=..density..)) + geom_histogram(alpha=.5, binwidth=5) + geom_density()
+
+p8 <- ggplot(Cars93, aes(x=Weight, y=MPG.highway)) + geom_point()+ geom_smooth()
+p8 <- ggplot(Cars93, aes(x=Weight, y=MPG.highway)) + geom_point()+ geom_smooth(method="lm", se=FALSE)#removes the standard error shading from the plot above
+#There are serveral methods.  Below we introduce a polynomial (p 207 UsingR):
+p8 <- ggplot(Cars93, aes(x=Weight, y=MPG.highway)) + geom_point()+ geom_smooth(method="lm",formula=y ~ poly(x,2), se=FALSE)
+#ggplot and faceting - see p 207 UsingR
+#ggplot faceting uses the model formula syntax. .~f or f~. facets grouped by rows or columns, respectfully
+p9 <- ggplot(PearsonLee, aes(y=child, x=parent)) + geom_point(alpha=.5) + 
+     geom_smooth(method="loess") + facet_grid(par ~ chl)
+
+Cars93_1 <- mutate(Cars93, price=cut(Price,c(0, 15, 30, 75),labels=c("Cheap", "Moderate", "Expensive")))
+p10 <- ggplot(Cars93_1, aes(x=Weight, y=MPG.highway)) + geom_point(cex=3) + geom_smooth(method="lm", se=FALSE) +
+     facet_grid(~ price)
+#Margins - not sure what this really means (p 209 UsingR)
+p11<- ggplot(PearsonLee, aes(y=child, x=parent)) + geom_point(alpha=.5) + 
+     geom_smooth(method="loess") + facet_grid(par ~ chl, margins="chl")
+#Facet Wrap is used when faceting by a factor:
+p12 <- ggplot(morley, aes(x=Speed)) + geom_histogram(binwith=50) + facet_wrap(~Expt)#lists each of the 5 experiements
