@@ -126,3 +126,51 @@ p11<- ggplot(PearsonLee, aes(y=child, x=parent)) + geom_point(alpha=.5) +
      geom_smooth(method="loess") + facet_grid(par ~ chl, margins="chl")
 #Facet Wrap is used when faceting by a factor:
 p12 <- ggplot(morley, aes(x=Speed)) + geom_histogram(binwith=50) + facet_wrap(~Expt)#lists each of the 5 experiements
+
+#Populations - Sample (P 219 UsingR)
+sample1 <- sample(0:1, size=10, replace=TRUE)# toss of a coin.  default is to sample without replacement
+sample2 <- sample(1:6, size=10, replace=TRUE)#roll of die 10 times
+sample3 <- sample(1:6, size=10, replace=TRUE) + sample(1:6, size=10, replace=TRUE)
+sample4 <-  sample(rep(0:1), times=c(3200, 6800), size=10, replace=TRUE) #rep(0:1, times=c(3200, 6800)) gives 3200 0's and 6800 1's in order
+
+#Distribution Families (P 222 UsingR)
+dunif(x=1, min=0, max=3) # d provides answers like what is the probability of x=5 - not 5 or less like below
+punif(q=2, min=0, max=3) # p cumulative probability function for binomial distribution pbinom (gives answers like 5 or less)
+qunif(p=1/2, min=0, max=3) # q returns the quartile - obviously 1/2 of 3 is 1.5
+runif(n=1, min=0, max=3) # r returns a random value in [0,3]
+runif(10, min=0, max=1:5) #returns 10 random values between 0 and 5
+
+x <- runif(100) #100 random values from uniform distribution
+d <- density(x) #note the outpunt if d is a class of density! This is what is returned:
+
+# Call:
+#      density.default(x = x)
+# 
+# Data: x (100 obs.);	Bandwidth 'bw' = 0.09965
+# 
+# x                 y           
+# Min.   :-0.2925   Min.   :0.001617  
+# 1st Qu.: 0.1047   1st Qu.:0.160913  
+# Median : 0.5019   Median :0.706437  
+# Mean   : 0.5019   Mean   :0.628747  
+# 3rd Qu.: 0.8991   3rd Qu.:1.033379  
+# Max.   : 1.2962   Max.   :1.257553
+
+curve(dunif, -.1, 1.1, ylim=c(0,max(d$y,1))) #plots the uniform distribution
+curve(dunif, min(d$x), max(d$x), ylim=c(0,max(d$y,1))) #my version ;)
+lines(d, lty=2) # adds the density estimate - the curve would follow the uniform distribution with an increase of random samples
+rug(x) #adds a rug - 1-d plot - to the plot
+
+#Bernoulli Random Values - only 2 possible values - 0 or 1
+# R generates samples from this distribution using sample:
+n <- 10; p <- 1/4
+sample(0:1, size=n, replace=TRUE, prob=c(1-p, p)) #Bernoulli distribution when the probability is 25%
+
+#Binomial Random Values - counts the number of succsses in a Bernoulli trial
+# See http://www.r-tutor.com/elementary-statistics/probability-distributions/binomial-distribution AND the RMD in this project
+#Toss a coin 10 times
+dbinom(5, size=10, prob=1/2) #result is there is a 24.6% probability that 5 heads will be counted
+#probability that there are 6 or fewer:
+sum(dbinom(0:6, size=10, prob=1/2))
+#or
+pbinom(6, size=10, p=1/2)
