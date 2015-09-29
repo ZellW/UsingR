@@ -249,3 +249,35 @@ pnorm(.9, mean=1, sd=1/sqrt(20))#32.7%
 x <- seq(0,50,1)
 y <- dbinom(x,50,0.2)#recalll vector, number of trials, probability
 plot(x,y, col="blue", "l", ylab="Binomial Density")
+
+#Statistical Inference - Simulations (p 244 UsingR)
+#Use replicate
+#M is the number of times you run the sample of 16 - testing 10 times with sample size 16
+func1 <- function(M, n, mu, sd) {replicate(M, mean(rnorm(n, mean=mu, sd=sigma)))}
+func1(10, 16, 100, 16)# produces M (10) realizations of sample (size=16) mean for normal population
+#Find z-score of a sample
+zstat <- function(x, mu, sigma){
+     (mean(x)-mu)/(sigma/sqrt(length(x)))
+}
+#Replicate the z-score - replicate function take a value n and an expression
+M <- 2000; n <- 7; mu <- 100; sigma <- 16
+res <- replicate(M, {
+     x <- rnorm(n, mu, sigma)
+     zstat(x, mu, sigma)
+})
+hist(res)
+#t distribution
+tstat <- function(x, mu){
+     (mean(x)-mu) / (sd(x) /sqrt(length(x)))}
+mu <- 0; sigma <- 1; M <- 750; n <- 4
+res2 <- replicate(M, tstat(rnorm(n, mu, sigma), mu))
+boxplot(res2)
+hist(res2)
+
+#Mean vs Media - good plottintg exercise
+M <- 1000; n <- 35
+res_mean <- replicate(M, mean(rnorm(n)))
+res_median <- replicate(M, median(rnorm(n)))
+boxplot(list("Sample Mean"=res_mean, "Sample Median"=res_median), main="Normal Population")
+#Note the median have greater variability
+
