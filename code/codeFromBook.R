@@ -1,3 +1,5 @@
+#See http://www.r-bloggers.com/?s=Using+R+for+Introductory+Statistics
+#
 headtail(michelson)#headtail is specific to UsingR
 
 wts  <- kid.weights[,2]
@@ -174,3 +176,76 @@ dbinom(5, size=10, prob=1/2) #result is there is a 24.6% probability that 5 head
 sum(dbinom(0:6, size=10, prob=1/2))
 #or
 pbinom(6, size=10, p=1/2)
+
+#Normal Distribution (P227 UsingR)
+# 2 normal distributions have the same probabilities (area under hte curve to the left) at a given sd:
+pnorm(1, mean=0, sd=1) # 1 is the value where the curve is centered on the x axis - the answer is the z-score
+pnorm(4.5, mean=4, sd=.5) # 4.5 is the value where the curve is centered on the x axis- the answer is the same z-score (84.1% o fthe area is to the left)
+
+qnorm(c(.25, .5, .75))#Gets the z-scores for the 2nd and 3rd quartiles - the IQR.  IQR ~ 1.35sigma
+
+pnorm(1)-pnorm(-1) #tells ue that ~68% of the area is between 1 sd of the mean - for any normal distribution
+pnorm(2)-pnorm(-2) #tells ue that ~95% of the area is between 2 sd of the mean - for any normal distribution
+pnorm(3)-pnorm(-3) #tells ue that ~99.7% of the area is between 3 sd of the mean - for any normal distribution
+
+#What percent of men are at least 6 foot given mean=70.2 and sd=2.89?
+mu <- 70.2; sigma <- 2.89
+pnorm(6*12, mean=mu, sd=sigma) #73% men are 6 foot or shorter
+
+#How tall is the tallest man?
+#There are about 3.5 billion males.  So 1 in 3.5B:
+prob <- 1-1/3500000000
+qnorm(prob, mu, sigma)/12 #about 7.34 feet tall - not very accurate with only 2 paremeters but still a good exercise
+
+#Uniform Distribution (p 231 UsingR)
+res <-  runif(50, min=0, max=10)#Get random vaiables from uniform distribution
+par(fig=c(0,1,0,.35))#Sets up the the plot placement using the lower 35% of the diagram
+boxplot(res, horizontal=TRUE, bty="n", xlab="Uniform Sample")#the type of box to be drawn around the legend. The allowed values are "o" (the default) and "n".
+par(fig=c(0,1,.25,1), new=TRUE)# fig= setting uses top- 75% of figure
+hist(res, prob=TRUE, main="", col=gray(.9))
+lines(density(res), lty=2)
+curve(dunif(x, min=0, max=10), lwd=2, add=TRUE)
+rug(res)
+
+#Exponential Distribution
+#See http://www.r-bloggers.com/using-r-for-introductory-statistics-chapter-5-probability-distributions/
+samples <- rexp(100, rate=1/5)
+par(fig=c(0,1,0,0.35))
+boxplot(samples, horizontal=T, bty="n", xlab="log-normal distribution")
+par(fig=c(0,1,0.25,1), new=T)
+s <- seq(0,max(samples),0.1)
+d <- dexp(s, rate=1/5)
+hist(samples, prob=T, main="", col=gray(0.9), ylim=c(0,max(d)))
+lines(density(samples), lty=2)
+curve(dexp(x, rate=1/5), lwd=2, add=T)
+rug(samples)
+
+
+#Lognormal Distribution (p 233 UsingR)
+#A heaveliy skewed continuous distribution on positive number.  Can describe income or survival distributions as an example
+#Use lnorm with meanlog and sdlog as pararmeters
+
+samples <- rlnorm(100, meanlog=0, sdlog=1)
+par(fig=c(0,1,0,0.35))
+boxplot(samples, horizontal=T, bty="n", xlab="log-normal distribution")
+par(fig=c(0,1,0.25,1), new=T)
+s <- seq(0,max(samples),0.1)#numerical vector from 0 to the max of samples - 10.6 incremented by .1
+hist(samples, prob=T, main="", col=gray(0.9), ylim=c(0,max(d)))
+lines(density(samples), lty=2)
+curve(dlnorm(x, meanlog=0, sdlog=1), lwd=2, add=T)
+rug(samples)
+
+#t, f and chisq distributions containing 95% of the area with degrees of freedom = 10
+
+qt(c(.025, .975), df=10)
+qf(c(.025, .975), df1=10, df2=5)#f distribution requires 2 df values
+qchisq(c(.025, .975), df=1)
+
+#Central Limit Theorem (p 236 UsingR)
+#Grocery checkoutline.  Mean service mu = 1; std dev is 1 minute. What is prob that ave checkout times be .9 minutes or less?
+pnorm(.9, mean=1, sd=1/sqrt(20))#32.7%
+
+#Not in book, found online at http://rpubs.com/aousabdo/BOC1
+x <- seq(0,50,1)
+y <- dbinom(x,50,0.2)#recalll vector, number of trials, probability
+plot(x,y, col="blue", "l", ylab="Binomial Density")

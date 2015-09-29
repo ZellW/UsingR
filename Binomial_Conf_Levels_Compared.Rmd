@@ -1,0 +1,56 @@
+##Binomial Confidence Levels
+
+See http://www.r-bloggers.com/binomial-confidence-intervals/
+
+This stems from a couple of binomial distribution projects I have been working on recently.  It’s widely known that there are many different flavors of confidence intervals for the binomial distribution.  The reason for this is that there is a coverage problem with these intervals (see Coverage Probability).  A 95% confidence interval isn’t always (actually rarely) 95%.  So I got curious what would happen if I generated random binomial data to find out what percent of the simulated data actually fell within the confidence interval.  For simplicity I used p=0.5.  I wrote up some quick code that generates binomial data for varying sample sizes and runs a comparison for each of the nine confidence interval methods using the binom.confint() function.
+
+```{r} 
+library(binom)
+set.seed(0)
+nsims <- 10000
+maxn <- 500
+n <- seq(2,maxn, by=2)
+
+my.method <- c("exact", "ac", "asymptotic", "wilson", "prop.test", "bayes", "logit", "cloglog", "probit")
+my.method <- my.method[sort.list(my.method)]
+coverage <- matrix(NA, nrow=length(n), ncol=length(my.method))
+ci.lower <- ci.upper <- matrix(NA, ncol=length(my.method), nrow=length(n))
+
+for(i in 1:length(n)){
+m <- n[i]/2
+y <- rbinom(nsims, n[i], m/n[i])
+ll <- binom.confint(m,n[i], conf.level=.95, method=my.method)$lower
+ul <- binom.confint(m,n[i], conf.level=.95, method=my.method)$upper
+ci.lower[i,] <- ll
+ci.upper[i,] <- ul
+for(j in 1:length(my.method)){
+sig <- length(y[y/n[i]<=ul[j] &amp;amp;amp;amp;amp; y/n[i]>=ll[j]])
+coverage[i,j] <- sig/nsims
+}
+}
+plot(n,NULL, xlim=c(1,nrow(coverage)+1), ylim=c(.83,1),
+col=1, pch=16, ylab="Percent", xlab="N",
+main="95% Confidence Intervals for p=.5")
+
+points(replicate(ncol(coverage),n),coverage, col=c(1:9),
+pch=16, cex=.5)
+
+abline(h=seq(.93,.97, by=.01), col="#EEEEEE")
+abline(h=.95, col="#000000", lwd=2)
+abline(v=seq(2,maxn, by=20), col="#EEEEEE")
+legend("bottomright", my.method, col=c(1:9), pch=16, title="Interval Types", bg="#FFFFFF")
+plot(n,NULL, xlim=c(1,100), ylim=c(0,1),
+col=1, pch=16, ylab="Percent", xlab="N",
+main="95% Confidence Interval for p=.5")
+
+for(k in 1:ncol(coverage)){
+lines(n, ci.lower[,k], col=k, lwd=1)
+lines(n, ci.upper[,k], col=k, lwd=1)
+}
+legend("bottomright", my.method, col=c(1:9), ncol=2, lwd=1, title="Interval Types", bg="#FFFFFF")
+
+
+
+```
+
+
