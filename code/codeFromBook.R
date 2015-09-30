@@ -281,3 +281,63 @@ res_median <- replicate(M, median(rnorm(n)))
 boxplot(list("Sample Mean"=res_mean, "Sample Median"=res_median), main="Normal Population")
 #Note the median have greater variability
 
+#Estimating Probabilities (p 250 UsingR)
+#Example - Lottery - N diff numbers, player selects k number, j numbers are selected at random; player wins if 1 or more matched
+N <- 80; k <- 20; j <- 10#out of 80 numbers, player selects 20numbers and hopes it matches one of the 10 numbers the computer selects from the 80
+x <- sample(1:N, j, replace=FALSE)
+#Let's see if you won - were number 1 through 20 one of the 10 selected from 80?
+sum(x %in% 1:k)
+#simulate  1000 times
+M <-  10000
+res3 <- replicate(M, {
+     x <- sample(1:N, j, replace=FALSE)
+     sum(x %in% 1:k)
+})
+#How many times were 0 or 1 matches found in a population on 10,0000 simulations
+c("Zero Matches"=sum(res3==0)/length(res3), "One Match"=sum(res3==1)/length(res3))
+#Liklihood of 5 or more matches?
+sum(res3>=5)/length(res3)
+
+#Significance Test (p 252 UsingR)
+#Does honey improve performance? 7 participants; 3 in control groiup and 4 in treatement.  The data is:
+testCtrl <- c(23, 33, 40); testTreatment <- c(19, 22, 25, 26)
+the_data <- stack(list(ctrl=testCtrl, treatment=testTreatment))#Stacking vectors concatenates multiple vectors into 
+#a single vector along with a factor indicating where each observation originated. Unstacking reverses this operation
+aggregate(values~ind, the_data, mean)# or
+the_data %>% group_by(ind) %>% summarise(TheMean=mean(values))
+#Perhaps the results (the mean with honey was 9 higher) were do to who was chosen.  Let's simulate
+cmbs <- combn(7,3) #Generate all combinations of the elements of x taken m at a time. If x is a positive integer, 
+#returns all combinations of the elements of seq(x) taken m at a time. 
+#So it creates all the combinations of the 7 participants 3 at a time = 35 possible unique combinations - order does not matter
+#To know how many combinations rather than developing all the data is:
+cmbs_count <- choose(7,3)
+#The first case in the matrix would be what we already observed - lets demo this:
+ind <- cmbs[,2]#is the first set of 3 so the referenced values are still 23, 33, 40 
+obs <- mean(the_data$value[ind] - mean(the_data$value[-ind]))#selects the first 3 and then selects everything else left
+#Let's simulate:
+res4 <- apply(cmbs, 2, function(ind){
+     mean(the_data$values[ind]) - mean(the_data$values[-ind])
+     })#the values represent the radomization distribution for the difference in group means - how extreme is the value 9?
+sum(res4>=obs)#3
+sum(res4>=obs)/length(res4)#8.6%
+#3 of 35 wil be equal or larger than 9. Seems unlikly but not impossible that honey improves performance.
+hist(res4)#just for fun
+
+#p 254 UsingR
+#Does caffiene make you jittery?  20 classmates, 10 in each team.  Every other is service caffinated coffee.  Count finger taps.  The results:
+caf <- c(245, 246, 246, 248, 248, 248, 250, 250, 250, 252)
+no_caf <- c(242, 242, 242, 244, 244, 245, 246, 247, 248, 248)
+the_data2 <- stack(list(Caffiene=caf, No_Caffiene=no_caf))
+obs2 <- mean(caf)- mean(no_caf)#3.5
+#How unusual is thhis if all possible random assingment of the 20 into 2 groups?
+tmp2 <- choose(20,10)#184,756 - a bit much.  Consider if the set was larger:
+tmp3 <- choose(60,30)#HUGE number - too much even for computers.  Alternative:  simulate from the radominzation distribution
+sample(1:20, 10)#Randomly select 10
+#Now simulate this
+res5 <- replicate(2000, {
+     ind <- sample(1:20, 10, replace=FALSE)
+     mean(the_data2$values[ind]) - mean(the_data2$values[-ind])
+})
+sum(res5>obs2)/length(res5)#.0025 ~ 0.25% - therefore strong indication caffiene increases finger tapping
+
+#How well does a sample statistic estimate a parameter? (Above we wanted to know if a treatment induced an effect)
