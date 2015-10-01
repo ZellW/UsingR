@@ -1,4 +1,6 @@
 #See http://www.r-bloggers.com/?s=Using+R+for+Introductory+Statistics
+#http://www.inside-r.org/packages/cran/UsingR/docs/getAnswer
+#http://rpackages.ianhowson.com/cran/UsingR/
 #
 headtail(michelson)#headtail is specific to UsingR
 
@@ -341,3 +343,46 @@ res5 <- replicate(2000, {
 sum(res5>obs2)/length(res5)#.0025 ~ 0.25% - therefore strong indication caffiene increases finger tapping
 
 #How well does a sample statistic estimate a parameter? (Above we wanted to know if a treatment induced an effect)
+#Bootstrap
+#Sample data  on diff between charge and Medicare payment fopr a diagnoses:
+data (Medicare)
+diabetes <- subset(Medicare, subset=DRG.Definition == "638 - DIABETES W CC") #or
+diabetes <- filter(Medicare, DRG.Definition == "638 - DIABETES W CC")
+priceGap <- with(diabetes, Average.Covered.Charges - Average.Total.Payments)
+range(priceGap)#Very large range
+#Goal is to find asn interval where we have conficence the unknown population mean resides
+xbar <- mean(priceGap)
+#A single random sample:
+xstar <- sample(priceGap, length(priceGap),replace=TRUE)
+#Bootstrap uses these values as if they were actually from the population.  Example:
+mean(xstar-xbar)
+#So lets replciate.
+M <- 2000; 
+res6 <- replicate(M,{
+     xstar <- sample(priceGap, length(priceGap), replace=TRUE)
+     mean(xstar)- xbar
+})
+#Let's npw use this to get 95% conficence:
+alpha <- .05
+xbar + quantile(res6, c(alpha/2, 1-alpha/2))
+
+#Bayesian Analysis -p 259 UsingR - SKIPPED for COURSERA CLASS
+#
+#Confidence Intervals - p 262 UsingR
+#Random sample 80 students. 80 had moderate exercise 5 or more times a week. What is 90% confidence level for the proportion of all 1,812 students?
+#Manual Method:
+x <- 80; n <- 125
+proportion <- x/n
+alpha <- 1-0.90
+zstar <- qnorm(1-alpha/2)
+SE <- sqrt(proportion*(1-proportion)/n)
+MOE <- zstar*SE #Margin Of Error
+proportion + c(1,-1)* MOE#0.7106177 0.5693823
+#Compare using R formula
+prop.test(x,n, conf.level = .9)#same result
+prop.test(x,n, conf.level = .9)$conf.int#to get just the part we are interest in
+
+#Survey says 57%, n=1000, MOE=3%
+zstar2 <- .03/sqrt(.57*(1-.57)/1000)
+alpha <- 2*pnorm(-zstar2)
+(1-alpha)*100#implied 95%
