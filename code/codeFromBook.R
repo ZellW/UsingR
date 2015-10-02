@@ -144,6 +144,20 @@ qunif(p=1/2, min=0, max=3) # q returns the quartile - obviously 1/2 of 3 is 1.5
 runif(n=1, min=0, max=3) # r returns a random value in [0,3]
 runif(10, min=0, max=1:5) #returns 10 random values between 0 and 5
 
+#See http://www.cyclismo.org/tutorial/R/probability.html
+# dnorm. Given a set of values it returns the height of the probability distribution at each point. 
+# If you only give the points it assumes you want to use a mean of zero and standard deviation of one. 
+# 
+# pnorm. Given a number or a list it computes the probability that a normally distributed random 
+# number will be less than that number. This function also goes by the rather ominous title of the 
+# “Cumulative Distribution Function.” It accepts the same options as dnorm
+#  you wish to find the probability that a number is larger than the given number you can use the lower.tail option
+# 
+# qnorm which is the inverse of pnorm. The idea behind qnorm is that you give it a probability, and 
+# it returns the number whose cumulative distribution matches the probability. For example, if you 
+# have a normally distributed random variable with mean zero and standard deviation one, then 
+# if you give the function a probability it returns the associated Z-score
+
 x <- runif(100) #100 random values from uniform distribution
 d <- density(x) #note the outpunt if d is a class of density! This is what is returned:
 
@@ -369,12 +383,14 @@ xbar + quantile(res6, c(alpha/2, 1-alpha/2))
 #Bayesian Analysis -p 259 UsingR - SKIPPED for COURSERA CLASS
 #
 #Confidence Intervals - p 262 UsingR
+#Proportions######################################
 #Random sample 80 students. 80 had moderate exercise 5 or more times a week. What is 90% confidence level for the proportion of all 1,812 students?
 #Manual Method:
 x <- 80; n <- 125
 proportion <- x/n
 alpha <- 1-0.90
-zstar <- qnorm(1-alpha/2)
+zstar <- pnorm(1-alpha/2)#provides the quantile density function - why quantile - not sure - pnorm gives the same results.  
+#See plot p 267 to understand 1-alpha
 SE <- sqrt(proportion*(1-proportion)/n)
 MOE <- zstar*SE #Margin Of Error
 proportion + c(1,-1)* MOE#0.7106177 0.5693823
@@ -383,6 +399,18 @@ prop.test(x,n, conf.level = .9)#same result
 prop.test(x,n, conf.level = .9)$conf.int#to get just the part we are interest in
 
 #Survey says 57%, n=1000, MOE=3%
-zstar2 <- .03/sqrt(.57*(1-.57)/1000)
-alpha <- 2*pnorm(-zstar2)
+#Not that hard.  We know MOE=z*SE; z=MOE/SE; z=.03/SE
+z <- .03/sqrt(.57*(1-.57)/1000)
+alpha <- 2*pnorm(-z)# 
 (1-alpha)*100#implied 95%
+
+#Confidence Internvals - Population Mean p 271 UsingR###########################
+#t test
+#NOTE:  SE(proportions) = sqrt((P*(1-P)/n); SE(mean) = sd/sqrt(n)
+#Class of 30 average height 66, sd=4. What is 80% conf level?
+xbar <- 66; sd <- 4; n <- 4; alpha <- 1-.8
+tstat <- qt(1-alpha/2, df=n-1)
+SE <- sd/sqrt(n)
+MOE <- tstat*SE
+xbar+c(1,-1)* MOE
+
