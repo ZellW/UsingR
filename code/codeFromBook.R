@@ -14,6 +14,8 @@ var(wts)
 sd(wts)
 z_scores <- scale(wts)[,1] #provides the z scores
 
+#Can also try scale.  See https://dl.dropboxusercontent.com/u/10246536/Web/RTutorialSeries/example_scale.txt
+
 #Example:  Professor grades by z scores.  A student with a z score >1.28 gets an A.  What grades is needed to get an A givent the score vector below?
 
 grades <- c(54, 50, 79, 79, 51, 69, 55, 62, 100, 80)
@@ -143,6 +145,8 @@ punif(q=2, min=0, max=3) # p cumulative probability function for binomial distri
 qunif(p=1/2, min=0, max=3) # q returns the quartile - obviously 1/2 of 3 is 1.5
 runif(n=1, min=0, max=3) # r returns a random value in [0,3]
 runif(10, min=0, max=1:5) #returns 10 random values between 0 and 5
+
+#To understnad PDF and CDF see http://ww2.coastal.edu/kingw/statistics/R-tutorials/prob.html
 
 #See http://www.cyclismo.org/tutorial/R/probability.html
 # dnorm. Given a set of values it returns the height of the probability distribution at each point. 
@@ -404,6 +408,10 @@ z <- .03/sqrt(.57*(1-.57)/1000)
 alpha <- 2*pnorm(-z)# 
 (1-alpha)*100#implied 95%
 
+#NOTE: The z-tests have not been implimented in the default R packages, although they have 
+#been included in an optional, add-on library called "UsingR." (See the Package Management 
+#tutorial for details on how to add this library to R.) 
+
 #Confidence Internvals - Population Mean p 271 UsingR###########################
 #t test
 #NOTE:  SE(proportions) = sqrt((P*(1-P)/n); SE(mean) = sd/sqrt(n)
@@ -414,3 +422,168 @@ SE <- sd/sqrt(n)
 MOE <- tstat*SE
 xbar+c(1,-1)* MOE
 
+#Goal is 2 ounces.  Test results are provided below.  What is 90% interval for mean?  Does it include 2.0?
+tests <- c(1.95, 1.8, 2.1, 1.82, 1.75, 2.01, 1.83, 1.9)
+#See if it looks normal:
+qqnorm(tests)#looks OK
+(t.test(tests, conf.level = .8))$conf.int# 1.84 - 1.95 - 2.0 not included
+
+#NOTE:  http://ww2.coastal.edu/kingw/statistics/R-tutorials/independent-t.html
+# http://www.statmethods.net/stats/ttest.html
+
+#In R, one sided confidence intervals can be found using alt="less" with prop.test, binom.test and t.test
+#Coffeee target temp 180.  Find 90% conf int for mean temp with the data below in form of (-infinity, b) - means
+#true mean is ess than 0
+x <- c(175, 185, 170, 184, 175)
+t.test(x, conf.level = .9, alternative = "less")#-inf to 182 - the conf int contans 180
+
+#Other Confidence Intervals  (p 278 UsingR)
+#Skipped for class -
+
+#Condfidence Intervals for Differences (p 281 UsingR)
+#Useful for times when you have 2 smples and you want to know if they are from the same population
+#First - difference of proportions
+#2 polls taken. 1st 1000 interview and 560 agree. 2nd time 1200 interviewed and 570 agree. 
+#What is 95% conf int for dirrecences in proportion?
+prop.test(x=c(560, 570), n=c(1000, 1200), conf.level = .95)
+# gives .042, .128 does not include 0 so there is a real difference
+
+#Difference of Means:
+#if raw data is available, use the t test for conf int for difference in means
+#Weight loss test with placebo. Find 90% conf level for difference in mean
+x <- c(0,0,0,2,4,5,13,14,14,14,15,17,17)
+y <- c(0,6,7,8,11,13,16,16,16,17,18)
+boxplot(list(placebo=x, ephedra=y), col="gray")#Assumption of equal variances appears reasonable therefore var.equal=true
+t.test(x, y, var.equal = TRUE)$conf.int #-8.279119  2.698699.  Now try with var.equal-false
+t.test(x, y, var.equal = FALSE)$conf.int #-8.187298  2.606878 
+#with var-equal=true there is 113+11-2=22 df, The df for the unequal is 21.99 (Just run the equation fully)
+#Value nearly identical.  0 is within -8.28 and 2.7 so 95% ean are from same population
+
+#Can also use data when there is a 2 level factor.
+require(HistData); data("GaltonFamilies"); attach(GaltonFamilies)#Gender is a 2 level factor in long format
+t.test(childHeight ~ gender, conf.level=.95)#0 not in the interval - gender makes a diff
+
+#Matched Samples - not independent (p 286 UsingR)
+#Do the shoes have diff wear mean amounts?
+require(MASS); data("shoes"); attach(shoes)
+with(shoes, t.test(A,B, conf.level=.9, paired=TRUE))#with 90 conf does not include 0 so 90% conf the pops are different
+
+#Confidence Intervals for Median (p 288 UsingR)
+#Skipped to next chapter
+
+#Significance Testing - Hypothesis Test (p 301 UsingR) http://www.cyclismo.org/tutorial/R/pValues.html
+##Proportion
+#H(O) p=.15; H(A)= p>.15; 22695 interviewed out of 150000
+prop.test(x=22695, n=150000, p=.15, alternative="greater")#p=.08 which > .05 so keep H(O)
+
+#Significant Testing for the Mean
+#Raw data - unsummarized
+#Does the car actually get 17 mpg?  - H(O) =17 Here is the raw data:
+mpg <- c(11.4, 13.1, 14.7, 15, 15.5, 15.6, 15.9, 16, 16.8)
+xbar <- mean(mpg); stddev <- sd(mpg); n <- length(mpg)
+SE <- stddev/sqrt(n)
+observed <- (xbar-17)/SE
+#Run the t test
+pt(observed, df=9, lower.tail=TRUE)#p is very small so reject H(O) - p=0.002104993
+#Same example but using t.test:
+t.test(mpg, mu=17, alternative="less")#gives p=0.002614 plus conf int,estimate for u and more
+
+#Another good site: http://www.cyclismo.org/tutorial/R/pValues.html
+
+# pt:  Density, distribution function, quantile function and random generation for the t distribution 
+# with df degrees of freedom.  Returns one value - p
+#t.test: Performs one and two sample t-tests on vectors of data. The formula interface is only applicable for 
+#the 2-sample tests. Provides conf level and two values for the interval and p
+
+#In textbook problems, we are often not given the raw data but only summary statistics. 
+#R does not provide a mechanism for dealing with this, other than doing the calculations by 
+#hand at the command line... 
+
+# A random sample of 130 human beings was taken, and the oral body
+# temperature of each was measured. The sample mean was 98.25 degrees
+# Fahrenheit, with a standard deviation of 0.7332. Test the null
+# hypothesis that the mean human body temperature is 98.6 degrees.
+
+t.obt = (98.25 - 98.6) / (.7332 / sqrt(130))
+t.obt
+qt(c(.025,.975),df=129)              ### critical values, alpha=.05
+2 * pt(t.obt,df=129)                 ### two-tailed p-value
+
+#Do books cost more than 500 on average?  H(O)=500; H(A)>500
+costs <-  c(304, 431, 385, 987, 303, 480, 455, 724, 642, 506)
+t.test(costs, mu=500, alternative="greater")
+#Because p>.05, H(O) is not rejected
+
+#Power (p 308 UsingR)
+#The probability of a type II error is beata.  1-beata = power
+alpha <- .05; beta <- .20; 
+power.t.test(delta=1, sd=1, sig.level=alpha, power=1-beta, type="one.sample", alt="one.sided")
+#Because = 7.7, 8 samples would be needed.
+
+#Sign Test for Median (p 312 UsingR)
+#Test for the median of adistribution that has no assumptions on the parent except that it is continuous with positive density
+#Assume length of calls:
+calls <- c(2, 1, 3, 3, 3, 3, 1, 3, 16, 2, 2, 12, 20, 3, 1)
+#H(O)=5; H(A)=<5
+#The data appears non normal so a t test is not right - so use a sign test
+observations <- sum(calls>5) #find the observed value of T
+n <- length(calls)
+1-pbinom(n-observations -1, n, 1/2)# we want P(T) >=12 = 1-P(T<=11) - just a formual that needs to be memorized
+#Fives a value less than .05 so null hypotheses is rejected
+
+#Signed Rank Test (p 313 UsingR)
+#Improvement to signed test when pop is symitric but not close enough to normal for a t test
+#R gives us the wilcox test:  wilcox.text(x, mu=. . . , alt="two.sided")
+
+require(UsingR); data(salmon.rate); attach(salmon.rate)
+qqnorm(salmon.rate)#not normal
+qqnorm(log(salmon.rate))#Better
+# H(O): median = log(0.005); H(A): median > log(0.005)
+wilcox.test(log(salmon.rate), mu=log(0.005), alt="greater") 
+
+#2 Sample Test of Proportions
+#2010 poverty rate 15% from survey of 160000. 2011 was 15.13% from 150000. Is the diff between poverty
+# rates stitistically significant?
+#(HO): p(1)=P(2); H(A): p(1) < P(2)
+sampleProportions <- c(.15, .1513) # the sample proportions
+n <- c(160000, 150000) # the sample sizes
+counts <- n * sampleProportions #the counts
+prop.test(counts, n, alt="less")# p-value = 0.1571 - not stsatistically significant >.05 
+
+#T Test Comparing Means of Independent Samples (p 322 UsingR)
+#Is there a statistically significant evidence that the means are different with the data below
+m300 <- c(284, 279, 289, 292, 287, 295, 285, 279, 306, 298)
+m600 <- c(298, 307, 297, 279, 291, 335, 299, 300, 306, 291)
+#H(O): mu(x) = mu(y); H(A): mu(x) <>mu(y)
+plot(density(m300))
+lines(density(m600), lty=2)
+#both appear normal with simliar spreads so t test is good to use
+t.test(m300, m600, var.equal = TRUE) #p=0.05696; H(O) supported
+#If we did not assume equal variances:
+t.test(m300, m600) #p-value = 0.06065
+
+#Matched Samples (p 325 UsingR) = dependency between samples 
+drugF <- c(5, 3, 5, 6, 4, 4, 7, 4, 3)
+placebo <- c(2, 3, 2, 4, 2, 2, 3, 4, 2)
+t.test(drugF, placebo, paried=TRUE, alt="two.sided") #p-value = 0.003199 - H(O) rejected
+
+pretest <- c(77, 56, 64, 60, 57, 53, 72, 62, 65, 66)
+posttest <- c(88, 74, 83, 68, 58, 50, 67, 64, 74, 60)
+# H(O):  mu(1) = mu(2);  H(A):  mu(1) < mu(2)
+boxplot(pretest, posttest)
+t.test(pretest, posttest, var.equal = TRUE, alt="less") #p-value = 0.1139  H(O) not rejected (means are equal)
+#Now see what happens when we assumed they are paired:
+t.test(pretest, posttest, paired=TRUE, alt="less") #p-value = 0.04564 - is significant - better selection with small samples
+
+#Wilcoxon Rank Sum Test for Equality of Center (p 328 UsingR)
+#THe 2 sample t test determines if 2 independent samples have the same center when they are drawn from a 
+# normal distribution.  This will not work for heavily skewed or big tails.  However, if it can be assumed the 2 samples
+# come from identical distributions except for a shift of center then the Wilcoxon Rank Sum Test can be used
+# to determine if the centers are identical
+
+checkerA <- c(5.8, 1, 1.1, 2.1, 2.5, 1.1, 1.2, 3.2, 2.7)
+checkerB <- c(1.5, 2.7, 6.6, 4.6, 1.1, 1.2, 5.7, 3.2, 1.2, 1.3)
+plot(density(checkerA))
+lines(density(checkerB))
+# plot shows skewed distributions with long tails (no t test) but densities are roughly the same shape 
+wilcox.test(checkerA, checkerB) #p-value = 0.3892 - not significant - checkout times the same
