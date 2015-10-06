@@ -1,0 +1,213 @@
+---
+title: "StatNotes"
+output: pdf_document
+options: cache=TRUE
+---
+http://www.ling.upenn.edu/~joseff/rstudy/week3.html#Normality
+
+#The Normal Distribution
+
+It is generally assumed that most population distributions are normal, or at least could be transformed to be normal. What is nice about a normal 
+distibution is that it can be defined strictly by a mean (&mu) and standard deviation (&sigma).
+
+R has a number of built in functions that give you access to a few statistical distributions (see here for a comprehensive list). Here are the functions for accessing the normal distribution:
+
+* dnorm(x, mean, sd) Gives the density of a normal distribution with a given mean and sd at x
+* pnorm(q, mean, sd) Gives the probabilty of getting a value &le q from the cumulative probability function (the percentile)
+* qnorm(p, mean, sd) Gives the value that is the pth percentile from the cumulative probability function
+* rnorm(n, mean, sd) Gives n random numbers from a normal distribution
+
+To plot any of these distributions, we can use the curve() function, which takes an algebraic function as its first argument, then plots the function from some value to some other value.
+
+```{r}
+ curve(dnorm(x, mean = 0, sd = 1), from = -2, to = 2)
+ ##plots the shape of the density function
+	curve(pnorm(x, mean = 0, sd = 1), from = -2, to = 2)
+ ##plots the cumulative probability function
+ curve(qnorm(x, mean = 0, sd = 1), from = 0.022, to = 0.977)
+ ##plots the percentiles against their values  
+```
+An Example
+
+Following the discussion in Johnson 2008, lets look at a ficticious rating task. 36 subject are given a sentence, and are asked to rate its grammaticality on a scale of 1-10. First, let's simulate the data. I do this a little differently than Johnson 2008. I don't know if the difference is significant, but I think my way is more principled. 
+```{r}
+ samp.prob<-dnorm(1:10,mean = 4.5,sd = 2)
+ ## returns the probability of getting a particular rating assuming
+ ## &mu = 4.5 and &sigma = 2
+ ratings <- sample(1:10, 36, replace = T, prob = samp.prob) 
+ # ^^ this is the step to repeat to get new ratings  
+```
+Now that we've simulated the data, lets look at the frequencies of each response using table() and plot a histogram of it. (The default behavior for plotting a table is as a histogram.)
+```{r}
+table(ratings)
+plot(table(ratings),xlim = c(1,10))  
+```
+Here, we can obviously see how the data has clustered. It looks the sentence got ratings of 5 the most, followed by 4. With this task, what is the probability of getting a particular response? We can approximate this by dividing the frequency of each response by the number of tokens.
+```{r}
+table(ratings) / 36  
+```
+Based on the data I generated for the plot above, the probability of the sentence recieving a rating of 5 &asymp 28%, and the probabilty of getting a 4 rating &asymp 22%. The probability of getting a 4 or 5 &asymp 50%. This is a little higher than you would expect from the population we sampled. 
+```{r}
+sum(samp.prob[4:5])
+## should be 0.3866681  
+```
+##Continuous measurements
+
+What would happen if we hadn't restricted subjects to giving us an integer rating, but had instructed them to report grammaticality by moving a slider left to right. 
+We would then be collecting data with continuous values. Let's simulate and examine the data:
+```{r}
+c.ratings <- rnorm(36,mean = 4.5,sd = 2)
+## rnorm() draws random samples from a normal distribution.
+table(c.ratings)
+plot(table(c.ratings),xlim = c(1,10))  
+```
+So, you can see how useless it is like this. The probability of getting the same value on a continuous scale is infinitely low. If we did get the same value twice, it would actually be evidence of the limited precision of our measurement tools. We could try binning the continuous values, then plotting a histogram of frequencies within each bin. hist() does this automatically. We'll give the argument prob the value True, so that the y-axis values will be the probability of an observation appearing in that bin.
+However, if we are willing to assume normality, we can do better than this by examining the normal density curve. Here, we'll overlay it on the histogram we just plotted.
+```{r}
+hist(c.ratings,prob = T)
+curve(dnorm(x,mean = mean(c.ratings),sd = sd(c.ratings)),add = T)
+```
+What is nice about the normal distribution density function is that you can calculate the probability of a number appearing within a given range by finding the area under the curve.
+
+##Normality of Sample Means
+
+If you were to take a random sample from a normally distributed population 1000 times, you would probably have 1000 different sample means. However, those sample means themselves are normally distributed, and the larger the sample, the lower the variance.
+
+Not surprisingly, if the variance of the population were lower, the sample variance is also lower. The variance of the possible mean values is called the Standard Error of the Mean, and can be calculated as the standard deviation of the sample divided by the square of the size of the sample. The 95% confidence interval of a mean &asymp the sample mean ± (SEM*1.96). Let's look at our ratings example.
+```{r}
+ r.mean<-mean(c.ratings)
+ ##the sample mean
+ r.sem<-sd(c.ratings)/sqrt(length(c.ratings))
+ c(r.mean-(r.sem*1.96),r.mean+(r.sem*1.96))
+ ##95% of means of samples of the same size
+ ##drawn from the same population will be between
+ ##these two values  
+```
+What We've Got
+
+As Johnson 2008 points out, this reasoning about distributions buys us the following:
+* We can make probability statements about normal distributions
+* We can calculate sample means and variances
+* Sample means will fall into a normal distribution
+* You can estimate the variance of means from the sample mean and variance
+* Therefor we can make probability statements about population means.
+
+This now gives us a boot strap into testing hypotheses about populations from our samples.
+
+##Normality Testing
+
+Since the normal distribution is so important to many assumptions in statistical test, it's good to know some ways to gauge the normality of a sample. If your data is not normally distributed, then the results of most statistical tests and regressions can be meaningless, so you really really need to inspect the data this way. Here are two graphical techniques, and one statistical test.
+
+First, you can plot the empirical density of the data, and compare that to the density function of a normal distribution with the same mean and variance.
+```{r}
+plot(density(c.ratings))
+curve(dnorm(x,mean = mean(c.ratings),sd = sd(c.ratings)),add = T,lty =2, col = "red")  
+```
+Just eyeballing it, the sample looks pretty normal, and it should, since it was randomly generated from a normal distribution.
+
+Another graphical technique is the qqplot.
+```{r}
+qqnorm(c.ratings)
+qqline(c.ratings)  
+```
+What this plot does is compare which quantile a point empirically is in the data (the y axis) to what quantile that point would be if it had been drawn from a normal disribution with the mean and sd of the sample (the x axis). I find these hard to interpret sometimes. What is important is that if the points are closely distributed to the line, then the distribution is fairly normal.
+
+The statistical test for normality is the Shapiro-Wilk normality test. It returns a significant p-value if the distribution is significantly non-normal.
+```{r}
+shapiro.test(c.ratings)  
+```
+The p-value is > 0.05, so we cannot reject the hypothesis that the distribution is normal.
+
+##Tests for the mean
+
+Since the properties of a normal distribution are rather well known, we can test hypotheses about means of distributions. The questions we can ask are: Could this sample have been drawn from a population with mean equal to, greater or less than x? Could these two samples have been drawn from the same populations? Are the populatio means of these two samples greater or less than eachother?
+
+###t-tests
+
+The t-test is a test for the job. **Note** t-tests can only be performed meaningfully on data that is normally distributed. 
+
+One Sample t-test
+Let's look at some data from Daalgard 2008. This data is of the daily energy intake of some women.
+```{r}
+ daily.intake<-c(5260,5470,5640,6180,6390,6515,6805,7515,7515,8230,8770)
+ mean(daily.intake)
+ sd(daily.intake)
+ plot(density(daily.intake))
+ curve(dnorm(x,mean = mean(daily.intake),sd = sd(daily.intake)),add = T, col = "red",lty = 2)
+ qqnorm(daily.intake)
+ qqline(daily.intake)
+ shapiro.test(daily.intake)
+```
+
+Everything looks good and normal. As Daalgard suggests, we may want to know if this sample could have come from a population of women with a mean intake of 7725 kJ.
+```{r}
+ kJ<-t.test(daily.intake,mu=7725)
+ kJ  
+```
+The output of t.test() is the first specialized R object we've come across so far. The default print out is rather useful, but we can also access specific values from the test. To see what all is accessible, use names()
+```{r}
+ names(kJ)
+ kJ$alternative
+ kJ$p.value  
+```
+This was a two-sided t-test, which means we were testing the hypothesis that &mu = 7725. The p-value is sufficiently low, so we can reject this hypothesis at the p = 0.018 level, and adopt the alternative, that &mu &ne 7725. The default printout actually presents this in a much more readable way, but it' good to know how to access values from an object.
+
+If you wanted to do a one sided t-test, to examine the altenative hypotheses that &mu < or > x, you can pass a value of "greater" or "less" to the alternative argument of t.test()
+```{r}
+ t.test(daily.intake, mu = 7725, alternative = "greater")
+ t.test(daily.intake, mu = 7725, alternative = "less")  
+```
+###Two Sample t-tests
+
+If you have two samples, and want to see if they could have come from the same population, you want to test if they could have the same &mu. Daalgard has data on energy consumption of people with different satures.
+```{r}
+ library(ISwR)
+ summary(energy)  
+```
+There are two ways you could peform the t-test. Either pass two vectors to t-test, or give it a formula.
+```{r}
+ obese<-subset(energy,stature == "obese")$expend
+ lean<- subset(energy,stature == "lean")$expend
+ t.test(lean,obese)
+ ##or
+ t.test(energy$expend ~ energy$stature)
+``` 
+The p-value is very low, so we can reject the hypothesis that the population of obese people and the population of lean people have the same &mu when it comes to energy consumption. How big is the difference? The 95% confidence interval give the range we can be 95% confident that &mulean-&muobese lies within. 
+
+Again, we could do a one-sided t-test by defining alternative hypotheses
+```{r}
+t.test(energy$expend ~ energy$stature, alt = "greater")
+t.test(energy$expend ~ energy$stature, alt = "less")  
+```
+If you're willing to commit to the variances of these two populations being the same, then the two-sample t-test can be done with a bit more power. To compare variances, use var.test()
+```{r}
+var.test(energy$expend ~ energy$stature)  
+```
+If this returned a significant p-value, then we could not assume that the variances were equal. However, the p-value is not, so let's do the t-test again assuming equal variances.
+```{r}
+ t.test(energy$expend ~ energy$stature, var.equal = T)  
+```
+Looks like we've got a smaller p-value, and a narrower 95% confidence interval, so success.
+
+###Paired t-test
+
+Daalgard also has data on energy intake from women pre- and postmenstrual women in intake. However, what is important about this data is that it was not collected from different groups of women, but from the same women at different times. It's important to use a paired t-test for this kind of data. Any time a single individual provides 2 points of measurement, sort of pre- and post-treatment, a paired t-test should be used. (If you have more than two data points from an individual, you should do a repeated measures ANOVA, but I don't know how that works yet.)
+```{r}
+ t.test(intake$pre, intake$post,paired = T)  
+```
+###Non-parametric tests
+
+If for some reason you can't assume normality of a population (because you got a significant result on a Shapiro-Wilk test for instance), you could try using a non-parametric test. These tests make no assumptions about the distribution of the data, except that it is symmetrically distributed around its μ.
+
+One Sample Wilcoxon test
+```{r}
+ wilcox.test(daily.intake, mu = 7725)  
+```
+Two Sample Wilcoxon test
+```{r}
+ wilcox.test(energy$expend ~ energy$stature)  
+```
+Matched Pairs Wilcoxon test
+```{r}
+ wilcox.test(intake$pre, intake$post, paired = T) 
+```
