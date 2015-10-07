@@ -4,7 +4,7 @@ See http://www.r-bloggers.com/binomial-confidence-intervals/
 
 This stems from a couple of binomial distribution projects I have been working on recently.  It’s widely known that there are many different flavors of confidence intervals for the binomial distribution.  The reason for this is that there is a coverage problem with these intervals (see Coverage Probability).  A 95% confidence interval isn’t always (actually rarely) 95%.  So I got curious what would happen if I generated random binomial data to find out what percent of the simulated data actually fell within the confidence interval.  For simplicity I used p=0.5.  I wrote up some quick code that generates binomial data for varying sample sizes and runs a comparison for each of the nine confidence interval methods using the binom.confint() function.
 
-```{r} 
+```{r warning=FALSE} 
 library(binom)
 set.seed(0)
 nsims <- 10000
@@ -24,7 +24,8 @@ ul <- binom.confint(m,n[i], conf.level=.95, method=my.method)$upper
 ci.lower[i,] <- ll
 ci.upper[i,] <- ul
 for(j in 1:length(my.method)){
-sig <- length(y[y/n[i]<=ul[j] &amp;amp;amp;amp;amp; y/n[i]>=ll[j]])
+#ORIGINALsig <- length(y[y/n[i]<=ul[j] &amp;amp;amp;amp;amp; y/n[i]>=ll[j]])
+sig <- length(y[y/n[i]<=ul[j] & y/n[i]>=ll[j]])
 coverage[i,j] <- sig/nsims
 }
 }
