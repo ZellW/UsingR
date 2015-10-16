@@ -4,7 +4,9 @@ output: pdf_document
 options: cache=TRUE
 ---
 http://www.ling.upenn.edu/~joseff/rstudy/week3.html#Normality
-
+```{r}
+library(UsingR)
+```
 #The Normal Distribution
 
 It is generally assumed that most population distributions are normal, or at least could be transformed to be normal. What is nice about a normal 
@@ -27,6 +29,7 @@ To plot any of these distributions, we can use the curve() function, which takes
  curve(qnorm(x, mean = 0, sd = 1), from = 0.022, to = 0.977)
  ##plots the percentiles against their values  
 ```
+
 An Example
 
 Following the discussion in Johnson 2008, lets look at a ficticious rating task. 36 subject are given a sentence, and are asked to rate its grammaticality on a scale of 1-10. First, let's simulate the data. I do this a little differently than Johnson 2008. I don't know if the difference is significant, but I think my way is more principled. 
@@ -37,6 +40,11 @@ Following the discussion in Johnson 2008, lets look at a ficticious rating task.
  ratings <- sample(1:10, 36, replace = T, prob = samp.prob) 
  # ^^ this is the step to repeat to get new ratings  
 ```
+Just an intereing add:
+```{r}
+simple.hist.and.boxplot(ratings)
+```
+
 Now that we've simulated the data, lets look at the frequencies of each response using table() and plot a histogram of it. (The default behavior for plotting a table is as a histogram.)
 ```{r}
 table(ratings)
