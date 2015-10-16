@@ -126,6 +126,17 @@ Since the properties of a normal distribution are rather well known, we can test
 
 The t-test is a test for the job. **Note** t-tests can only be performed meaningfully on data that is normally distributed. 
 
+In practice, we compute a t-statisticwhich measures the number of standard deviations that ˆ β1 is away from
+0. If there really is no relationship between X and Y , then we expect that (3.14) will have a t-distribution with 
+n−2 degrees of freedom. The tdistribution has a bell shape and for values of n greater than approximately
+30 it is quite similar to the normal distribution. Consequently, it is a simple matter to compute the probability of 
+observing any value equal to |t| or larger, assuming β1 = 0. We call this probability the p-value. Roughly p-value
+speaking, we interpret the p-value as follows: a small p-value indicates that it is unlikely to observe such a substantial 
+association between the predictor and the response due to chance, in the absence of any real association
+between the predictor and the response. Hence, if we see a small p-value, then we can infer that there is an association 
+between the predictor and the response. We reject the null hypothesis—that is, we declare a relationship to exist between 
+and Y —if the p-value is small enough. Typical p-value cutoffs for rejecting the null hypothesis are 5 or 1%.
+
 One Sample t-test
 Let's look at some data from Daalgard 2008. This data is of the daily energy intake of some women.
 ```{r}
