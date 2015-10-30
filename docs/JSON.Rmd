@@ -1,0 +1,279 @@
+---
+title: "JSON"
+output: html_document
+---
+
+http://rbyexamples.blogspot.com/2015/07/extracting-json-data-in-r.html
+
+#Extracting JSON data in R 
+
+Increasingly, data on the internet is presented in JSON format. For the uninitiated, here's what a JSON file looks like:
+
+{
+  people:[ 
+    {name:"John Smith", timings:[1,2,3]}, 
+    {name:"Adam Yu", timings:[3,2,1]}, 
+    {name:"Frank Pin", timings:[7,4,3]} 
+}
+
+It's more or less a data file. The curly braces indicated named arrays (e.g. we know that we have the name and timings of each person), while the square brackets indicate ordered unnamed arrays (e.g. Frank's first timing is 7, his second timing is 4, and his third timing is 3.) 
+
+How can R analyze the data appropriately? Let's take a look at a real life example: the salaries of public servants at the City of Chicago. R has three major packages which can analyze JSON data.
+
+These are RJSONIO, rjson, and jsonlite. The differences are minor, especially for simple JSON files.
+Here, we will use the RJSONIO package.
+
+First, let's download and install the required packages and load the required data. 
+```{r}
+install.packages("RJSONIO")
+library(RJSONIO)
+RawData <- fromJSON("https://data.cityofchicago.org/api/views/xzkq-xp2w/rows.json?accessType=DOWNLOAD")
+```
+
+Should you have difficulty downloading the city of Chicago data, here's a link. (Note: information in the link is correct as of July 2015)  https://drive.google.com/file/d/0BwicE6o8eMyJMk5hNDdkeVc2MnM/view?pli=1
+
+You should actually display the JSON file a web browser for easier viewing. Once you've done this, you'll notice that what you're looking for is in the data section. Hence
+```{r}
+Data <- RawData$data
+```
+
+gives you most of what you need. I say most, because things like variable names aren't there. Here's an example of how you would extract a given variable:
+```{r}
+employeeNames <- sapply(Data, function(x) x[[9]])
+```
+What sapply does is that it takes each observation in Data (which is a list containing lists), and 
+obtains the 9th element of each list, and then saves it to employeeNames. sapply returns an array.
+
+Just to check that things are working properly, we can run
+```{r}
+head(employeeNames) 
+```
+In order to extract all variables efficiently, we need to define two functions. 
+```{r}
+install.packages('gdata')
+library(gdata) # necessary for trim
+grabinfo  <- function(var) {
+  print(paste("Variable", var, sep=" ")) # for aesthetics: tells you which variables have been processed
+  sapply(Data, function(x) returnData(x,var)) # the dataset "Data" is hardcoded here and is input as parameter "x"
+}
+
+returnData <- function(x, var) {
+
+  if (!is.null( x[[var]] )) {
+    return ( trim( x[[var]] ))
+  } else {
+    return(NA)
+  }
+}
+
+df <- data.frame(sapply(1:length(Data[[1]]),grabinfo), stringsAsFactors=FALSE)
+
+# Performs grabinfo for each variable in Data
+# you run grabinfo(1), grabinfo(2), ... grabinfo(12).
+# 
+# grabinfo(1) then uses sapply (again) to get values of Variable1 for all observations
+# likewise with grabinfo(2), and so on
+#
+# in doing so, the entire dataset is transformed into a dataframe
+```
+
+Finally, some technicalities:
+```{r}
+head(df) # Just checking that things are working again
+names(df) <- sapply(1:12,function(x) RawData[['meta']][['view']][['columns']][[x]][['name']])
+df$`Employee Annual Salary` <- as.numeric(df$`Employee Annual Salary`) # change the variable to numeric
+df
+```
+Of course, this is a very simple case. What if our JSON contains nested objects (objects within objects)? You may wish to consult this excellent guide (this blogpost took many good points from there). https://drive.google.com/file/d/0BwicE6o8eMyJSnRHTjA4S0JmSkk/view
+
+What if you're actually downloading a Javascript file containing JSON? Check this out.  (This is Part 2 below) http://zevross.com/blog/2015/02/12/using-r-to-download-and-parse-json-an-example-using-data-from-an-open-data-portal/
+
+#Part 2
+http://zevross.com/blog/2015/02/12/using-r-to-download-and-parse-json-an-example-using-data-from-an-open-data-portal/
+```{r}
+##Using R to download and parse JSON: an example using data from an open data portal
+
+library(RJSONIO)
+# from the website
+foodMarketsRaw<-fromJSON("https://data.ny.gov/api/views/9a8c-vfzj/rows.json?accessType=DOWNLOAD")
+
+# if you downloaded
+#foodMarketsRaw<-fromJSON("retail_food_markets.json")
+```
+Note that I was asked by Scott Chamberlain why I used the package RJSONIO rather than rjsonlite. My answer was “no good reason”. I followed up with a speed test on this file using the fromJSON function from each package. RJSONIO was 3x faster in this one case. At the suggestion of Jeroen Ooms, creator of the jsonlite package, I added the simplifyVector=FALSE argument to the jsonlite::fromJSON and found this allows jsonlite to read the data 2x faster than RJSONIO (though for a perfect time comparison I would need to change RJSONIO simplification settings also).
+
+For more information on related packages, Gaston Sanchez has a really nice presentation on the different options for reading JSON data in R. http://gastonsanchez.com/work/webdata/getting_web_data_r5_json_data.pdf
+
+Extract the data from the JSON file
+
+If you take a look at the file in the browser or in a text editor you'll see that the first big chunk of lines is devoted to the metadata – the source of the file etc. It is not until line 1229 that you see the data node which is all we need initially. If you type str(foodMarketsRaw) you’ll notice that the data has been read as an R list. So we will use double brackets to extract the data node:
+```{r}
+# extract the data node
+foodMarkets<-foodMarketsRaw[['data']]
+```
+The data (in the JSON file) looks something like this:
+```{r}
+head(foodMarkets)
+```
+Orient yourself to the data
+
+Working with JSON in R can be a bit disorienting because you end up with lists within lists within lists so let's break it down a bit. In this dataset we have an outer list where each list item is an individual food market (you can see this from the sample data above. So foodMarkets[[1]] would give you all the data for the first food market in the list. If you type length(foodMarkets[[1]]) you'll see that the first food market comes with 23 pieces of information. For example, if you explore the sample above you'll see that the 14th element is the food market name:
+```{r}
+foodMarkets[[1]][[14]] ## name of food market 1
+## [1] "PLAZA 23 TRUCK STOP    "
+foodMarkets[[2]][[14]] ## name of food market 2
+## [1] "PRICE CHOPPER #245     "
+```
+Assemble the data frame: an example of extracting a variable
+
+I’m going to extract the data variable-by-variable and then assemble them into a data frame. Since we have a list, a logical place to start is the lapply function which will operate on the list piece-by-piece or, even better sapply which does the same thing but will return an array instead of a list.
+
+So, for example, if you want to extract the food market names from the list you can use this code which essentially cycles through each food market and extracts the name:
+```{r}
+fmNames<-sapply(foodMarkets, function(x) x[[14]])
+head(fmNames)
+## [1] "PLAZA 23 TRUCK STOP    " "PRICE CHOPPER #245     "
+## [3] "PEACOCK                " "FINYOUR FISHMONGER     "
+## [5] "R&A GROCERY STORE      " "ANTHONYS CHOC DIP FRUIT"
+```
+We could copy and paste this line of code 23 times but this is cumbersome and prone to error — let’s do it programatically.
+
+Assemble the data frame: extracting all the variables (except the geography)
+
+There are a ton of ways to extract all the variables without hard coding. I can pretty much guarantee that this is not the best approach (and please do write to me with alternatives!). Originally I tested using two, nested sapply statements but ran into trouble when certain data values were missing. So, instead, I wrote two functions. I have a function that returns the data if it exists and an NA otherwise (this is returnData) and then I have a function that does the sapply. (Note that I'm only applying this to the first 22 variables, not the geographic infomation – this is next).
+```{r}
+library(gdata) # for the trim function
+grabInfo<-function(var){
+  print(paste("Variable", var, sep=" "))  
+  sapply(foodMarkets, function(x) returnData(x, var)) 
+}
+
+returnData<-function(x, var){
+  if(!is.null( x[[var]])){
+    return( trim(x[[var]]))
+  }else{
+    return(NA)
+  }
+}
+
+# do the extraction and assembly
+fmDataDF<-data.frame(sapply(1:22, grabInfo), stringsAsFactors=FALSE)
+head(fmDataDF)
+```
+Assemble the data frame: extracting the geographic information
+
+There is one additional level of complication with the geographic information stored in element 23 of each market. This “variable” is, itself, a list. 
+```{r}
+foodMarkets[[1]][[23]] #geographic info for food market 1
+## [[1]]
+## [1] "{\"address\":\"240 CHURCH ST #242\",\"city\":\"ALBANY\",\"state\":\"NY\",\"zip\":\"12202\"}"
+## 
+## [[2]]
+## [1] "42.63540995700049"
+## 
+## [[3]]
+## [1] "-73.75540780899968"
+## 
+## [[4]]
+## NULL
+## 
+## [[5]]
+## [1] FALSE
+```
+The first piece is a JSON format of the address and then lat and long and then two administrative variables. We will use the same approach as before but hard code the variable number and extract the data one level deeper. 
+```{r}
+grabGeoInfo<-function(val){
+
+    l<- length(foodMarkets[[1]][[val]])
+    tmp<-lapply(1:l, function(y) 
+
+      sapply(foodMarkets, function(x){
+
+        if(!is.null(x[[val]][[y]])){
+          return(x[[val]][[y]])
+        }else{
+          return(NA)
+        }
+
+        })     
+      )
+}
+
+
+fmDataGeo<-grabGeoInfo(23)
+fmDataGeo<-data.frame(do.call("cbind", fmDataGeo), stringsAsFactors=FALSE)
+
+fmDataDF<-cbind(fmDataDF, fmDataGeo)
+head(fmDataDF)
+```
+Add the names
+
+The column names are in the metadata. If you review the metadata you can see that the columns are under meta:view. The column detail, then, can be extracted with:
+```{r}
+columns<-foodMarketsRaw[['meta']][['view']][['columns']]
+```
+If you look at any of the entries (try columns[[14]]) you'll see that there is a lot more than just column names. So, once again, we'll use sapply. We again have a complication related to geo where the column names are not under meta:view:columns but rather meta:view:columns:subColumnTypes so I'll extract with hard coding here (which is clearer) but I'll also give the function that can do it for you regardless of whether the variable is geo or not:
+```{r}
+# names the hard-coding way
+fmNames1<-sapply(1:22, function(x) columns[[x]]$name)
+fmNames2<-columns[[23]]$subColumnTypes
+
+fmNames<-c(fmNames1, fmNames2)
+```
+Here is the function approach instead which will extract names for a geo or non-geo field:
+```{r}
+getNames<-function(x){
+  if(is.null(columns[[x]]$subColumnTypes)){
+    return(columns[[x]]$name)
+  }else{
+    return(columns[[x]]$subColumnTypes)
+  }
+}
+
+fmNames<-unlist(sapply(1:length(columns), getNames))
+```
+Now we add the names to the dataset and take a look:
+```{r}
+names(fmDataDF)<-fmNames
+head(fmDataDF)
+```
+And format the lat/long for future use:
+```{r}
+fmDataDF$latitude<-as.numeric(fmDataDF$latitude)
+fmDataDF$longitude<-as.numeric(fmDataDF$longitude)
+```
+Make a quick map with the R package ggplot2
+
+I'm going to use a simple shapefile of New York State that is included in the zip you can download. I’ll go through the mapping quickly but if you want more detail, much of the code comes from a previous post on mapping with ggplot2
+http://zevross.com/blog/2014/07/16/mapping-in-r-using-the-ggplot2-package/
+```{r}
+library(rgdal)
+library(ggplot2)
+state<-readOGR("./data", layer="nys")
+```
+You can't simply add the points because the state boundary has a projected coordinate system while the points are unprojected latitude and longitude. You can get the projection of the state boundaries with proj4string(state). So we need to project before we can add food markets (again, see the previous post, I know this code is tricky):
+```{r}
+fmDataDF<-fmDataDF[!is.na(fmDataDF$latitude) & !is.na(fmDataDF$longitude),]
+fmDataDF[["Square Footage"]]<-as.numeric(fmDataDF[["Square Footage"]])
+write.csv(fmDataDF[,c("Estab Type", "DBA Name", "latitude", "longitude", "Square Footage")],
+".data/foodmarkets.csv", row.names=FALSE)
+coordinates(fmDataDF)<-~longitude+latitude
+proj4string(fmDataDF)<-CRS("+proj=longlat +datum=NAD83") #set the coordinate system
+fmDataDF<-spTransform(fmDataDF, CRS(proj4string(state)))
+geodata<-data.frame(coordinates(fmDataDF))
+names(geodata)<-c("x", "y")
+```
+Now we're ready to combine them:
+```{r}
+ggplot() +  
+    geom_polygon(data=state, aes(x=long, y=lat, group=group), fill="grey40", 
+        colour="grey90", alpha=1)+
+    labs(x="", y="", title="Food Markets NYS")+ #labels
+    theme(axis.ticks.y = element_blank(),axis.text.y = element_blank(), # get rid of x ticks/text
+          axis.ticks.x = element_blank(),axis.text.x = element_blank(), # get rid of y ticks/text
+          plot.title = element_text(lineheight=.8, face="bold", vjust=1))+ # make title bold and add space
+    geom_point(aes(x=x, y=y), data=geodata, alpha=1, size=3, color="grey20")+# to get outline
+    geom_point(aes(x=x, y=y), data=geodata, alpha=1, size=2, color="darkblue")+
+    coord_equal(ratio=1) # square plot to avoid the distortion
+```
+
