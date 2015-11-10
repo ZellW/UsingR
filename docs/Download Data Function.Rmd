@@ -1,0 +1,22 @@
+You can use following function to download the data:
+```{r}
+getDataFiles <- function(filesDirectory = "./") { 
+        if (!file.exists(filesDirectory)) {
+      dir.create(filesDirectory)
+           }
+        testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+        trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+        trainFile <- "train.csv"
+        testFile <- "test.csv"
+   trainFilePath <- paste(filesDirectory, trainFile, sep = "/")
+        testFilePath <- paste(filesDirectory, testFile, sep = "/")
+        download.file(trainUrl, destfile = trainFilePath, method="curl")
+        download.file(testUrl, destfile = testFilePath, method="curl")
+        training <- read.csv(trainFilePath, na.strings=c("NA","#DIV/0!",""))
+        testing <- read.csv(testFilePath, na.strings=c("NA","#DIV/0!",""))
+}
+```
+Run the function, for example, as follows:
+```{r}
+#getDataFiles("/data")
+```
