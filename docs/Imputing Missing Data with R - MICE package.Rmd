@@ -79,6 +79,7 @@ If our assumption of MCAR data is correct, then we expect the red and blue box p
 
 The mice() function takes care of the imputing process:
 ```{r results='hide'}
+library(mice)
 tempData <- mice(data,m=5,maxit=50,meth='pmm',seed=500)
 
 ```
@@ -151,3 +152,37 @@ modelFit2 <- with(tempData2,lm(Temp~ Ozone+Solar.R+Wind))
 summary(pool(modelFit2))
 ```
 After having taken into account the random seed initialization, we obtain (in this case) more or less the same results as before with only Ozone showing statistical significance.
+
+##A Missing Data Function
+
+```{r missingDataFunction}
+# A function that plots missingness
+# requires `reshape2`
+
+library(reshape2)
+library(ggplot2)
+library(magrittr)
+
+ggplot_missing <- function(x){
+
+  x %>% 
+    is.na %>%
+    melt %>%
+    ggplot(data = .,
+           aes(x = Var2,
+               y = Var1)) +
+    geom_raster(aes(fill = value)) +
+    scale_fill_grey(name = "",
+                    labels = c("Present","Missing")) +
+    theme_minimal() + 
+    theme(axis.text.x  = element_text(angle=45, vjust=0.5)) + 
+    labs(x = "Variables in Dataset",
+         y = "Rows / observations")
+}
+```
+
+Let's try it:
+
+```{r}
+ggplot_missing(tempData)
+```
