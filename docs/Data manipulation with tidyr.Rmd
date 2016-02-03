@@ -22,7 +22,6 @@ head(mtcars)
 Let us include the names of the cars in a column called car for easier manipulation.
 ```{r message=FALSE, warning=FALSE}
 mtcars$car <- rownames(mtcars)
-mtcars$car
 mtcars <- mtcars[, c(12, 1:11)]
 head(mtcars)
 ```
@@ -102,3 +101,113 @@ data1
 ```
 
 It first splits the datetime column into date and time, and then splits time into hour, min, and second.
+
+##tidyr Update
+
+tidyr 0.4.0. makes it easy to “tidy” your data, storing it in a consistent form so that it’s easy to manipulate, visualise and model. Tidy data has a simple convention: put variables in the columns and observations in the rows. You can learn more about it in the tidy data vignette. Install it with:
+install.packages("tidyr")
+
+There are two big features in this release: support for **nested data frames**, and improved tools for **turning implicit missing values into explicit missing values**. These are described in detail below. As well as these big features, all tidyr verbs now handle grouped_df objects created by dplyr, gather() makes a character key column (instead of a factor), and there are lots of other minor fixes and improvements. Please see the release notes for a complete list of changes.
+
+
+###Nested data frames
+
+nest() and unnest() have been overhauled to support a new way of structuring your data: the nested data frame. In a grouped data frame, you have one row per observation, and additional metadata define the groups. In a nested data frame, you have one row per group, and the individual observations are stored in a column that is a list of data frames. This is a useful structure when you have lists of other objects (like models) with one element per group.
+
+For example, take the gapminder dataset:
+```{r warning=FALSE, message=FALSE}
+library(gapminder)
+library(dplyr)
+
+gapminder
+```
+
+We can plot the trend in life expetancy for each country:
+```{r warning=FALSE, message=FALSE}
+library(ggplot2)
+
+ggplot(gapminder, aes(year, lifeExp)) +
+  geom_line(aes(group = country))
+```
+
+But it’s hard to see what’s going on because of all the overplotting. One interesting solution is to summarise each country with a linear model. To do that most naturally, you want one data frame for each country. nest() creates this structure:
+```{r}
+by_country <- gapminder %>% 
+  group_by(continent, country) %>% 
+  nest()
+
+by_country
+```
+
+The intriguing thing about this data frame is that it now contains one row per group, and to store the original data we have a new data column, a list of data frames. If we look at the first one, we can see that it contains the complete data for Afghanistan (sans grouping columns):
+```{r}
+by_country$data[[1]]
+```
+
+This form is natural because there are other vectors where you’ll have one value per country. For example, we could fit a linear model to each country with purrr:
+```{r}
+by_country <- by_country %>% 
+  mutate(model = purrr::map(data, ~ lm(lifeExp ~ year, data = .))
+)
+by_country
+```
+
+Because we used mutate(), we get an extra column containing one linear model per country.
+
+It might seem unnatural to store a list of linear models in a data frame. However, I think it is actually a really convenient and powerful strategy because it allows you to keep related vectors together. If you filter or arrange the vector of models, there’s no way for the other components to get out of sync.
+
+nest() got us into this form; unnest() gets us out. You give it the list-columns that you want to unnested, and tidyr will automatically repeat the grouping columns. Unnesting data gets us back to the original form:
+```{r}
+by_country %>% unnest(data)
+```
+
+When working with models, unnesting is particularly useful when you combine it with broom to extract model summaries:
+```{r}
+# Extract model summaries:
+by_country %>% unnest(model %>% purrr::map(broom::glance))
+
+# Extract coefficients:
+by_country %>% unnest(model %>% purrr::map(broom::tidy))
+
+# Extract residuals etc:
+by_country %>% unnest(model %>% purrr::map(broom::augment))
+```
+
+I think storing multiple models in a data frame is a powerful and convenient technique, and I plan to write more about it in the future.
+
+###Expanding
+
+The complete() function allows you to turn implicit missing values into explicit missing values. For example, imagine you’ve collected some data every year basis, but unfortunately some of your data has gone missing:
+```{r}
+resources <- frame_data(
+  ~year, ~metric, ~value,
+  1999, "coal", 100,
+  2001, "coal", 50,
+  2001, "steel", 200
+)
+resources
+```
+
+Here the value for steel in 1999 is implicitly missing: it’s simply absent from the data frame. We can use complete() to make this missing row explicit, adding that combination of the variables and inserting a placeholder NA:
+```{r}
+resources %>% complete(year, metric)
+```
+
+With complete you’re not limited to just combinations that exist in the data. For example, here we know that there should be data for every year, so we can use the fullseq() function to generate every year over the range of the data:
+```{r}
+resources %>% complete(year = full_seq(year, 1L), metric)
+```
+
+In other scenarios, you may not want to generate the full set of combinations. For example, imagine you have an experiment where each person is assigned one treatment. You don’t want to expand the combinations of person and treatment, but you do want to make sure every person has all replicates. You can use nesting() to prevent the full Cartesian product from being generated:
+```{r}
+experiment <- data_frame(
+  person = rep(c("Alex", "Robert", "Sam"), c(3, 2, 1)),
+  trt  = rep(c("a", "b", "a"), c(3, 2, 1)),
+  rep = c(1, 2, 3, 1, 2, 1),
+  measurment_1 = runif(6),
+  measurment_2 = runif(6)
+)
+experiment
+
+experiment %>% complete(nesting(person, trt), rep)
+```
