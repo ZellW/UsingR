@@ -1,0 +1,97 @@
+---
+title: "Control Structure Loops in R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+See http://www.dataperspective.info/2016/02/control-structures-loops-in-r.html
+Good Basic Reference:  https://rpubs.com/mrandrewandrade/r_programming_basics_reference_sheet
+
+We will learn about control structures loops used in R. Control strcutures in R contains conditionals, loop statements like any other programming languages.
+
+<p style="text-align:center;"><img src="../figures/control_structures.png"></p>
+
+Loops are very important and forms backbone to any programming languages.
+
+##If else statement:##
+```{r}
+#See the code syntax below for if else statement 
+x=10
+if(x>1){
+ print("x is greater than 1")
+ }else{
+  print("x is less than 1")
+  } 
+
+#See the code below for nested if else statement
+
+ 
+  x=10
+ if(x>1 & x<7){
+     print("x is between 1 and 7")}else if(x>8 & x< 15){
+         print("x is between 8 and 15")
+     }
+
+
+```
+
+
+
+##For loops:##
+As we know for loops are used for iterating items 
+```{r}
+ #Below code shows for  loop implementation
+x = c(1,2,3,4,5)
+ for(i in 1:5){
+     print(x[i])
+ }
+```
+
+##While loop:##
+```{r}
+#Below code shows while loop in R
+x = 2.987
+while(x <= 4.987) { 
+     x = x + 0.987
+     print(c(x,x-2,x-1)) 
+}
+```
+
+##Repeat Loop:##
+The repeat loop is an infinite loop and used in association with a break statement.
+```{r}
+#Below code shows repeat loop:
+a = 1
+repeat{
+     print(a)
+     a = a+1 
+     if(a > 4)break}
+```
+
+##Break statement:##
+ A break statement is used in a loop to stop the iterations and flow the control outside of the loop. 
+```{r}
+ #Below code shows break statement:
+x = 1:10 
+ for (i in x){ 
+     if (i == 2){ 
+         break 
+     }
+     print(i)
+ }
+```
+
+##Next statement:##
+Next statement enables to skip the current iteration of a loop without terminating it. 
+```{r}
+ #Below code shows next statement 
+x = 1: 4 
+ for (i in x) { 
+     if (i == 2){ 
+         next}
+     print(i)
+ }
+```
