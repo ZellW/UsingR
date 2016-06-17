@@ -1,0 +1,102 @@
+---
+title: "Remove Outliers"
+output: html_document
+---
+
+See http://rpubs.com/lcollado/7901
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###Remove outliers
+
+The goal is to remove outliers (by variable) by marking them as NA and keeping a record of which were outliers.
+
+####Data
+
+First, lets create a sample data set
+
+```{r}
+set.seed(20130828)
+data <- data.frame(X = c(NA, rnorm(1000), runif(20, -20, 20)), Y = c(runif(1000), 
+    rnorm(20, 2), NA), Z = c(rnorm(1000, 1), NA, runif(20)))
+```
+
+Here you can browse it interactively:
+```{r}
+library(rCharts)
+library(data.table)
+
+## Add the index
+d <- data.table(cbind(row = 1:nrow(data), data))
+t1 <- dTable(d, sPaginationType = "full_numbers", iDisplayLength = 10, sScrollX = "100%")
+t1#t1# clear comment if want to run interactively and comment out line below
+#t1$print("chart1", include_assets = TRUE, cdn = TRUE)
+
+```
+
+Notice for example that the first observation in variable X is a NA. Meaning that we will be dealing with original NAs and new NAs.
+
+####Find outliers
+
+We will mark an outlier any observation outside 3 sd. The next function finds the cells of the matrix that are considered as outliers.
+```{r}
+findOutlier <- function(data, cutoff = 3) {
+    ## Calculate the sd
+    sds <- apply(data, 2, sd, na.rm = TRUE)
+    ## Identify the cells with value greater than cutoff * sd (column wise)
+    result <- mapply(function(d, s) {
+        which(d > cutoff * s)
+    }, data, sds)
+    result
+}
+
+outliers <- findOutlier(data)
+outliers
+```
+###Remove outliers
+
+Next we can remove the ouliers.
+```{r}
+removeOutlier <- function(data, outliers) {
+    result <- mapply(function(d, o) {
+        res <- d
+        res[o] <- NA
+        return(res)
+    }, data, outliers)
+    return(as.data.frame(result))
+}
+
+dataFilt <- removeOutlier(data, outliers)
+```
+
+Here is how the data looks after the filtering step. Use the information from the outliers to find the data entries that were filtered. For example, in page 101 (when showing 10 entries per page) you can see entries 1,001 to 1,010.
+
+## Add the index
+```{r}
+d2 <- data.table(cbind(row = 1:nrow(dataFilt), dataFilt))
+t2 <- dTable(d2, sPaginationType = "full_numbers", iDisplayLength = 10, sScrollX = "100%")
+#t2 clear comment if wnat to run interactively and comment out line below
+t2$print("chart2", cdn = TRUE)
+```
+
+####Iterate
+
+If you want to, you can iterate the procedure. However, note that the standard deviations of the filtered data will be smaller than in the original data set, thus potentially finding many more outliers.
+```{r}
+outliers2 <- findOutlier(dataFilt)
+outliers2
+
+dataFilt2 <- removeOutlier(dataFilt, outliers2)
+```
+Here is the result after two iterations.
+```{r}
+## Add the index
+d3 <- data.table(cbind(row = 1:nrow(dataFilt2), dataFilt2))
+t3 <- dTable(d3, sPaginationType = "full_numbers", iDisplayLength = 10, sScrollX = "100%")
+#t3 clear comment if want to run interactively and comment out line below
+t3$print("charts3", cdn = TRUE)
+```
+
+
