@@ -1,0 +1,67 @@
+---
+title: "A few methods for making tables in rmarkdown"
+output: html_document
+---
+
+Most of them are a bit irritating because of limitations on customising table and column widths. The last method offers the most flexibility and produces quite nice output.
+```{r}
+my_data <- head(iris)
+names(my_data) <- c(letters[1:ncol(iris)])
+library("knitr")
+kable(my_data)
+```
+
+```{r}
+library("xtable")
+print(xtable(my_data), type = "html", include.rownames=FALSE, html.table.attributes=list("border='0' cellpadding='5' "))
+```
+
+```{r}
+library(xtable)
+print(xtable(my_data), type = 'html')
+```
+
+library(xtable)
+print(xtable(my_data), type = 'html', html.table.attributes = '')
+
+```{r}
+library("pander")
+pandoc.table(my_data)
+```
+
+```{r}
+library("pander")
+pandoc.table(my_data, split.cells = 5)
+```
+```{r}
+pander::panderOptions('table.split.table', 350)
+pander::pandoc.table(my_data, style="rmarkdown")
+```
+```{r}
+library("ascii")
+## 
+## Attaching package: 'ascii'
+## 
+## The following object is masked from 'package:pander':
+## 
+##     Pandoc
+print(ascii(my_data), type = 'pandoc')
+## Warning in rep(rownames, length = nrow(x)): 'x' is NULL so the result will
+## be NULL
+## Warning in rep(colnames, length = ncol(x)): 'x' is NULL so the result will
+## be NULL
+```
+```{r}
+library("htmlTable")
+htmlTable(my_data, col.rgroup = c("none", "#F7F7F7"))
+```
+```{r}
+library(hwriter)
+hwrite(my_data, border=0)
+```
+
+This one is the most useful, and has a nice guide to customisation here: http://www.ebi.ac.uk/~gpau/hwriter/
+```{r}
+library(hwriter)
+cat(hwrite(my_data, border = 0, center=TRUE, table.frame='void', width='300px', table.style='padding: 50px', row.names=FALSE, row.style=list('font-weight:bold')))
+```
