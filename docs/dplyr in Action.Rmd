@@ -1,0 +1,400 @@
+---
+title: "dplyr in Action"
+output: html_document
+---
+
+See https://rollingyours.wordpress.com/2016/06/29/express-intro-to-dplyr/
+```{r message=FALSE, warning=FALSE, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+##Verbs in Action !
+
+dplyr is based on the idea that when working with data there are a number of common activities one will pursue: reading, filtering rows on some condition, selecting or excluding columns, arranging/sorting, grouping, summarize, merging/joining, and mutating/transforming columns. There are other activities but these describe the main categories. dplyr presents a number of commands or “verbs” that help you accomplish the work. Note that dplyr does not replace any existing commands – it simply gives you new commands:
+
+Command | Purpose
+------------- | -------------------------------------------------------------------- |
+select() | Select columns from a data frame |
+| filter() | Filter rows according to some condition(s) |
+| arrange() | Sort / Re-order rows in a data frame |
+| mutate() | Create new columns or transform existing ones |
+| group_by() | Group a data frame by some factor(s) usually in conjunction to summary |
+| summarize() | Summarize some values from the data frame or across groups |
+| inner_join(x,y,by=”col”) | return all rows from ‘x’ where there are matching values in ‘x’, and all columns from ‘x’ and ‘y’. If there are multiple matches between ‘x’ and ‘y’, all combination of the matches are returned. |
+| left_join(x,y,by=”col”) | return all rows from ‘x’, and all columns from ‘x’ and ‘y’. Rows in ‘x’ with no match in ‘y’ will have ‘NA’ values in the new columns. If there are multiple matches between ‘x’ and ‘y’, all combinations of the matches are returned. |
+| right_join(x,y,by=”col”) | return all rows from ‘y’, and all columns from ‘x’ and y. Rows in ‘y’ with no match in ‘x’ will have ‘NA’ values in the new columns. If there are multiple matches between ‘x’ and ‘y’, all combinations of the matches are returned |
+| anti_join(x,y,by=”col”) | return all rows from ‘x’ where there are not matching values in ‘y’, keeping just columns from ‘x’ |
+
+###readr
+
+There is also an associated package called readr that is more efficient at ingesting CSV files than the base R functions such as read.csv. While it is not part of the actual dplyr package it does in fact produce a dplyr structure as it reads in files. readr provides the read_csv function to do the work. It is also pretty smart and can figure things out like if there is a header or not so you don’t have to provide a lot of additional arguments. Here is an example using a file that contains information on weather station measurements in the year 2013.
+```{r}
+#install.packages("readr")  # one time only 
+library(readr)
+ 
+url <- "http://steviep42.bitbucket.org/YOUTUBE.DIR/weather.csv"
+download.file(url,"weather.csv")
+
+weather <- read_csv("weather.csv")
+weather
+```
+###tbl_df
+
+It is important to note that dplyr works transparently with existing R data frames though ideally one should explicitly create or transform an existing data frame to a dplyr structure to get the full benefit of the package. Let’s use the dplyr tbl_df command to wrap an existing data frame. We’ll convert the infamous mtcars data frame into a dplyr table since it is a small data frame that is easy to understand. The main advantage in using a ‘tbl_df’ over a regular data frame is the printing: tbl objects only print a few rows and all the columns that fit on one screen, describing the rest of it as text.
+```{r}
+dp_mtcars <- tbl_df(mtcars)
+ # dp_mtcars is a data frame as well as a dplyr object
+class(dp_mtcars)
+```
+In the example below (as with the readr example above) notice how only a subset of the data gets printed by default. This is actually very nice especially if you have ever accidentally typed the name of a really, really large native data frame. R will dutifully try to print a large portion of the data even if it locks up your R session. So wrapping the data frame in a dplyr table will prevent this. Also notice how you get a summary of the number of rows and columns as well as the type of each column. 
+```{r}
+dp_mtcars
+``` 
+Now we could start to operate on this data frame / dplyr table by using some of the commands on offer from dplyr. They do pretty much what the name implies and you could use them in isolation though the power of dplyr comes through when using the piping operator to chain together commands. We’ll get there soon enough. Here are some basic examples:
+
+###filter()
+```{r}
+# Find all rows where MPG is >= 30 and Weight is over 1.8 tons
+filter(dp_mtcars, mpg >= 30 & wt > 1.8)
+```
+###select()
+
+The following example illustrates how the select() function works. We will select all columns whose name begins with the letter “m”. This is more useful when you have lots of columns that are named according to some pattern. For example some Public Health data sets can have many, many columns (hundreds even) so counting columns becomes impractical which is why select() supports a form of regular expressions to find columns by name. Other helpful arguments in this category include: 
+
+| Argument | Purpose |
+| ---------------------- | ---------------------------|
+| ends_with(x, ignore.case=TRUE) | Finds columns whose nqme ends with “x” |
+| contains(x, ignore.case=TRUE) |Finds columns whose nqme contains “x” |
+| matches(x, ignore.case=TRUE) | Finds columns whose names match the regular expression “x” |
+| num_range(“x”,1:5, width=2) | selects all variables (numerically) from x01 to x05 |
+| one_of(“x”, “y”, “z”) | Selects variables provided in a character vector |
+
+```{r}
+select(dp_mtcars,starts_with("m"))
+# Get all columns except columns 5 through 10 
+select(dp_mtcars,-(5:10))
+```
+
+### mutate()
+
+Here we use the mutate() function to transform the wt variable by multiplying it by 1,000 and then we create a new variable called “good_mpg” which takes on a value of “good” or “bad” depending on if a given row’s MPG value is > 25 or not
+```{r}
+mutate(dp_mtcars, wt=wt*1000, good_mpg=ifelse(mpg > 25,"good","bad"))
+``` 
+
+###arrange()
+
+Next we could sort or arrange the data according to some column values. This is usually to make visual inspection of the data easier. Let’s sort the data frame by cars with the worst MPG and then sort by weight from heaviest to lightest. 
+```{r}
+arrange(dp_mtcars,mpg,desc(wt))
+```
+
+###Piping
+
+While the above examples are instructive they are not, at least in my opinion, the way to best use dplyr. Once you get up to speed with dplyr functions I think you will soon agree that using “pipes” to create chains of commands is the way to go. Just pipe various commands together to clean up your data, make some visualizations, and perhaps generate some hypotheses about your data. You find yourself generating some pretty involved adhoc command chains without having to create a standalone script file. The dplyr package uses the magrittr package to enable this piping capability within R. The “pipe” character is “%>%” which is different from the traditional UNIX pipe which is the vertical bar “|”. 
+```{r}
+# Here we filter rows where MPG is >= 25 and then select only rows 1-4 and 10-11.
+dp_mtcars %>% filter(mpg >= 25) %>% select(-c(5:9)) 
+```
+Next we filter rows where MPG is >= 25 and then select only rows 1-4 and 10-11 after which we sort the result by MPG from highest to lowest. You can keep adding as many pipes as you wish. At first, while you are becoming familiar with the idea, it is best to keep the pipeline relatively short so you can check your work. But it will not be long before you are stringing together lots of different commands. dplyr enables and encourages this type of activity so don’t be shy. 
+```{r}
+dp_mtcars %>% filter(mpg >= 25) %>% select(-c(5:9)) %>% arrange(desc(mpg))
+```
+That was pretty cool wasn’t it ? We don’t need to alter dp_mtcars at all to explore it. We could change our minds about how and if we want to filter, select, or sort. The way this works is that the output of the dp_mtcars data frame/table gets sent to the input of the filter function that is aware of the source which is why we don’t need to explicitly reference dp_mtcars by name. The output of the filter step gets sent to the select function which in turns pipes or chains its output into the input of the arrange function which sends its output to the screen. We could even pipe the output of these operations to the ggplot2  package. But first let’s convert some of the columns into factors so the resulting plot will look better.
+```{r}
+# Turn the cyl and am variables into factors. Notice that the resulting
+# output reflects the change
+dp_mtcars %>% mutate(cyl=factor(cyl,levels=c(4,6,8)),am=factor(am,labels=c("Auto","Manual" )))
+```
+But that was kind of boring – Let’s visualize this using the ggplot package whose author, Hadley Wickham, is also the author of dplyr. 
+```{r}
+dp_mtcars %>% mutate(cyl=factor(cyl,levels=c(4,6,8)), am=factor(am,labels=c("Auto","Manual" ))) %>%
+          ggplot(aes(x=wt,y=mpg,color=cyl)) + geom_point() + facet_wrap(~am)
+```
+
+Okay well that might have been too much for you and that’s okay if it is. Let’s break this down into two steps. First let’s save the results of the mutate operation into a new data frame.
+```{r}
+new_dp_mtcars <- dp_mtcars %>% mutate(cyl=factor(cyl,levels=c(4,6,8)),
+                     am=factor(am,labels=c("Auto","Manual" )))
+# Now we can call the ggplot command separately
+ggplot(new_dp_mtcars,aes(x=wt,y=mpg,color=cyl)) + geom_point() + facet_wrap(~am)
+``` 
+
+Pick whatever approach you want to break things down to the level you need. However, I guarantee that after a while you will probably wind up writing lots of one line programs.
+
+##Split-Apply-Combine
+
+There are two more commands from the dplyr package that are particularly useful in aggregating data. The group_by() and summarize() functions help us group a data frame according to some factors and then apply some summary functions across those groups. The idea is to first “split” the data into groups, “apply” some functions (e.g. mean()) to some continuous quantity relating to each group, and then combine those group specific results back into an integrated result. In the next example we will group (or split) the data frame by the cylinder variable and then summarize the mean MPG for each group and then combine that into a final aggregated result.
+```{r}
+dp_mtcars %>% group_by(cyl) %>% summarize(avg_mpg=mean(mpg))
+
+# Let's group by cylinder then by transmission type and then apply the mean
+# and sd functions to mpg
+dp_mtcars %>% group_by(cyl,am) %>% summarize(avg_mpg=mean(mpg),sd=sd(mpg))
+
+# Note that just grouping a data frame without summary doesn't appear to do 
+# much from a visual point of view. 
+dp_mtcars %>% group_by(cyl)
+```
+
+##Merging Data Frames
+One of the strengths of dplyr is it’s ability to do merges via various “joins” like those associated with database joins. There is already a built-in R command called merge that can handle merging duties but dplyr offers flexible and extended capabilities in this regard. Moreover it does so in a way that is consistent (for the most part) with SQL which you can use for a wife variety of data mining tasks. If you already know SQL then you will understand these commands without much effort. Let’s set up two example simple data frames to explain the concept of joining.
+```{r}
+df1 <- data.frame(id=c(1,2,3),m1=c(0.98,0.45,0.22))
+df2 <- data.frame(id=c(3,4),m1=c(0.17,0.66))
+``` 
+
+###Left Join
+Think about what it means to merge these data frames. It makes sense to want to join the data frames with respect to some common column name. In this case it is clear that the id column is in both data frames. So let’s join the data frames using “id” as a “key”. The question is what to do about the fact that there is no id in df2 corresponding to id number 2. This is why different types of joins exist. Let’s see how they work. We’ll start with the left join:
+```{r}
+left_join(df1,df2,by="id")
+```
+
+So the left join looks at the first data frame df1 and then attempts to find corresponding “id” values in df2 that match all id values in df1. Of course there are no ids matching 2 or 3 in df2 so what happens ? The left join will insert NAs in the m1.y column since there are no values in df2. Note that there is in fact an id of value 3 in both data frames so it fills in both measurement columns with the values. Also note that since in both data frames there is a column named “m1” so it has to create unique names to accommodate both columns. The “x” and “y” come from the fact that df1 comes before df2 in the calling sequence to left_join. Thus “x” matches df1 and “y” matches df2. 
+
+###Inner Join
+
+Let’s join the two data frames in a way that yields only the intersection of the two data structures based on “id”. Using visual examination we can see that there is only one id in common to both data frames – id 3. 
+```{r}
+inner_join(df1,df2,by="id")
+```
+
+##More Involved Join Examples
+
+Now we’ll look at a more advanced example. Let’s create two data frames where the first, (we’ll call it “authors”), presents a list of, well, authors. The second data frame presents a list of books published by various authors. Each data frame has some additional attributes of interest.
+```{r}
+# For reference sake - these data frames come from the examples contained in 
+# the help pages for the built-in R merge command
+ 
+authors <- data.frame(
+         surname = I(c("Tukey", "Venables", "Tierney", "Ripley", "McNeil")),
+         nationality = c("US", "Australia", "US", "UK", "Australia"),
+         deceased = c("yes", rep("no", 4)))
+      
+books <- data.frame(
+         name = I(c("Tukey", "Venables", "Tierney",
+                  "Ripley", "Ripley", "McNeil", "R Core")),
+         title = c("Exploratory Data Analysis",
+                   "Modern Applied Statistics ...",
+                   "LISP-STAT",
+                   "Spatial Statistics", "Stochastic Simulation",
+                   "Interactive Data Analysis",
+                   "An Introduction to R"),
+         other.author = c(NA, "Ripley", NA, NA, NA, NA,
+                          "Venables & Smith"))
+authors
+books
+```
+At first glance it appears that there is nothing in common between these two data frames in terms of column names. However, it is fairly obvious that the “surname” column in the authors data frame matches the “name” column in books so we could probably use those as keys to join the two data frames. We also see that there is an author ,”R Core” (meaning the R Core Team), who appears in the books table though is not listed as an author in the authors data frame. This kind of thing happens all the time in real life so better get used to it. Let’s do some reporting using these two data frames:
+
+Let’s find all authors listed in the authors table who published a book along with their book titles, other authors, nationality, and living status. Let’s try an inner join on this. Because we don’t have any common column names between books and authors we have to tell the join what columns to use for matching. The by argument exists for this purpose. Note also that the author “R Core” listed in books isn’t printed here because that author does not also exist in the authors table. This is because the inner join looks for the intersection of the tables.
+```{r}
+inner_join(books,authors,by=c("name"="surname"))
+
+# We could have also done a right join since this will require a result that has
+# all rows form the "right" data frame (in the "y" position) which in this case is 
+# authors
+right_join(books,authors,by=c("name"="surname"))
+``` 
+Next, find any and all authors who published a book even if they do not appear in the authors table. The result should show names, titles, other authors, nationality, and living status. Let’s do a left join which will pull in all rows from “x” (books) and where there is no matching key/name in authors then NAs will be inserted for columns existing in the “y” (authors) table.
+```{r}
+left_join(books,authors,by=c("name"="surname"))
+```
+
+Do the same as above but the result should show only the book title and name columns
+ in that order. This is simply a matter of doing the previous join and piping the result to a filter statement
+```{r}
+left_join(books,authors,by=c("name"="surname")) %>% select(title,name)
+```
+
+Find the book names of all US authors and who are not deceased. Well first we filter the authors table to filter out rows according the specified conditions. Then we can pass the result to an inner_join() statement to get the book titles and then we pass that result to select only the book titles. Note that because we are piping the output from the filter() results we don’t need to specify that in the call to inner_join(). That is, the inner_join function assumes that the filter() results represent the “x” position in the call to inner_join()
+```{r}
+authors %>% filter(deceased == "no" & nationality == "US") %>%
+            inner_join(books, by=c("surname"="name")) %>% select(title)
+```
+Find any book titles for authors who do not appear in the authors data frame. Here we use an anti_join() which returns all rows from books where there are no matching values in authors, keeping just columns from books – and then we pass that result to select for title and name
+```{r}
+anti_join(books,authors,by=c("name"="surname")) %>% select(title,name)
+``` 
+
+#Part 2 - dplyr 0.5.0 Release
+June 27, 2016 in Packages | by hadleywickham | 7 comments	
+
+I’m very pleased to announce that dplyr 0.5.0 is now available from CRAN. Get the latest version with:
+install.packages("dplyr")
+
+dplyr 0.5.0 is a big release with a heap of new features, a whole bunch of minor improvements, and many bug fixes, both from me and from the broader dplyr community. In this blog post, I’ll highlight the most important changes:
+- Some breaking changes to single table verbs.
+- New tibble and dtplyr packages.
+- New vector functions.
+- Replacements for summarise_each() and mutate_each().
+- Improvements to SQL translation.
+
+##Breaking changes
+
+arrange() once again ignores grouping, reverting back to the behaviour of dplyr 0.3 and earlier. This makes arrange() inconsistent with other dplyr verbs, but I think this behaviour is generally more useful. Regardless, it’s not going to change again, as more changes will just cause more confusion.
+```{r}
+mtcars %>% group_by(cyl) %>% arrange(desc(mpg))
+```
+
+If you give distinct() a list of variables, it now only keeps those variables (instead of, as previously, keeping the first value from the other variables). To preserve the previous behaviour, use .keep_all = TRUE:
+```{r}
+df <- data_frame(x = c(1, 1, 1, 2, 2), y = 1:5)
+
+# Now only keeps x variable
+df %>% distinct(x)
+# Previous behaviour preserved all variables
+df %>% distinct(x, .keep_all = TRUE)
+```
+
+The select() helper functions starts_with(), ends_with(), etc are now real exported functions. This means that they have better documentation, and there’s an extension mechnaism if you want to write your own helpers.
+
+##Vector functions
+
+This version of dplyr gains a number of vector functions inspired by SQL. Two functions make it a little easier to eliminate or generate missing values:
+
+Given a set of vectors, coalesce() finds the first non-missing value in each position:
+```{r}
+x <- c(1,  2, NA, 4, NA, 6)
+y <- c(NA, 2,  3, 4,  5, NA)
+
+# Use this to piece together a complete vector:
+coalesce(x, y)
+
+# Or just replace missing value with a constant:
+coalesce(x, 0)
+```
+
+The complement of coalesce() is na_if(): it replaces a specified value with an NA. 
+```{r}
+x <- c(1, 5, 2, -99, -99, 10)
+na_if(x, -99)
+```
+
+Three functions provide convenient ways of replacing values. In order from simplest to most complicated, they are:
+
+- if_else(), a vectorised if statement, takes a logical vector (usually created with a comparison operator like ==, <, or %in%) and replaces TRUEs with one vector and FALSEs with another. x1 <- sample(5)
+if_else(x1 < 5, "small", "big")
+#> [1] "small" "small" "big"   "small" "small"
+
+if_else() is similar to base::ifelse(), but has two useful improvements.
+ First, it has a fourth argument that will replace missing values:
+x2 <- c(NA, x1)
+if_else(x2 < 5, "small", "big", "unknown")
+#> [1] "unknown" "small"   "small"   "big"     "small"   "small"
+
+Secondly, it also have stricter semantics that ifelse(): the true and false arguments must be the same type. This gives a less surprising return type, and preserves S3 vectors like dates and factors:
+x <- factor(sample(letters[1:5], 10, replace = TRUE))
+ifelse(x %in% c("a", "b", "c"), x, factor(NA))
+#>  [1] NA NA  1 NA  3  2  3 NA  3  2
+if_else(x %in% c("a", "b", "c"), x, factor(NA))
+#>  [1] <NA> <NA> a    <NA> c    b    c    <NA> c    b   
+#> Levels: a b c d e
+
+Currently, if_else() is very strict, so you’ll need to careful match the types of true and false. This is most likely to bite you when you’re using missing values, and you’ll need to use a specific NA: NA_integer_, NA_real_, or NA_character_:
+if_else(TRUE, 1, NA)
+#> Error: `false` has type 'logical' not 'double'
+if_else(TRUE, 1, NA_real_)
+#> [1] 1
+
+•recode(), a vectorised switch(), takes a numeric vector, character vector, or factor, and replaces elements based on their values. x <- sample(c("a", "b", "c", NA), 10, replace = TRUE)
+
+# The default is to leave non-replaced values as is
+recode(x, a = "Apple")
+#>  [1] "c"     "Apple" NA      NA      "c"     NA      "b"     NA     
+#>  [9] "c"     "Apple"
+# But you can choose to override the default:
+recode(x, a = "Apple", .default = NA_character_)
+#>  [1] NA      "Apple" NA      NA      NA      NA      NA      NA     
+#>  [9] NA      "Apple"
+# You can also choose what value is used for missing values
+recode(x, a = "Apple", .default = NA_character_, .missing = "Unknown")
+#>  [1] NA        "Apple"   "Unknown" "Unknown" NA        "Unknown" NA       
+#>  [8] "Unknown" NA        "Apple"
+
+•case_when(), is a vectorised set of if and else ifs. You provide it a set of test-result pairs as formulas: The left side of the formula should return a logical vector, and the right hand side should return either a single value, or a vector the same length as the left hand side. All results must be the same type of vector. x <- 1:40
+case_when(
+  x %% 35 == 0 ~ "fizz buzz",
+  x %% 5 == 0 ~ "fizz",
+  x %% 7 == 0 ~ "buzz",
+  TRUE ~ as.character(x)
+)
+#>  [1] "1"         "2"         "3"         "4"         "fizz"     
+#>  [6] "6"         "buzz"      "8"         "9"         "fizz"     
+#> [11] "11"        "12"        "13"        "buzz"      "fizz"     
+#> [16] "16"        "17"        "18"        "19"        "fizz"     
+#> [21] "buzz"      "22"        "23"        "24"        "fizz"     
+#> [26] "26"        "27"        "buzz"      "29"        "fizz"     
+#> [31] "31"        "32"        "33"        "34"        "fizz buzz"
+#> [36] "36"        "37"        "38"        "39"        "fizz"
+
+case_when() is still somewhat experiment and does not currently work inside mutate(). That will be fixed in a future version.
+
+
+I also added one small helper for dealing with floating point comparisons: near() tests for equality with numeric tolerance (abs(x - y) < tolerance).
+x <- sqrt(2) ^ 2
+
+x == 2
+#> [1] FALSE
+near(x, 2)
+#> [1] TRUE
+
+
+Predicate functions
+
+Thanks to ideas and code from Lionel Henry, a new family of functions improve upon summarise_each() and mutate_each():
+•summarise_all() and mutate_all() apply a function to all (non-grouped) columns: mtcars %>% group_by(cyl) %>% summarise_all(mean)    
+#> # A tibble: 3 x 11
+#>     cyl      mpg     disp        hp     drat       wt     qsec        vs
+#>   <dbl>    <dbl>    <dbl>     <dbl>    <dbl>    <dbl>    <dbl>     <dbl>
+#> 1     4 26.66364 105.1364  82.63636 4.070909 2.285727 19.13727 0.9090909
+#> 2     6 19.74286 183.3143 122.28571 3.585714 3.117143 17.97714 0.5714286
+#> 3     8 15.10000 353.1000 209.21429 3.229286 3.999214 16.77214 0.0000000
+#> ... with 3 more variables: am <dbl>, gear <dbl>, carb <dbl>
+
+•summarise_at() and mutate_at() operate on a subset of columns. You can select columns with: •a character vector of column names,
+•a numeric vector of column positions, or
+•a column specification with select() semantics generated with the new vars() helper.
+mtcars %>% group_by(cyl) %>% summarise_at(c("mpg", "wt"), mean)
+#> # A tibble: 3 x 3
+#>     cyl      mpg       wt
+#>   <dbl>    <dbl>    <dbl>
+#> 1     4 26.66364 2.285727
+#> 2     6 19.74286 3.117143
+#> 3     8 15.10000 3.999214
+mtcars %>% group_by(cyl) %>% summarise_at(vars(mpg, wt), mean)
+#> # A tibble: 3 x 3
+#>     cyl      mpg       wt
+#>   <dbl>    <dbl>    <dbl>
+#> 1     4 26.66364 2.285727
+#> 2     6 19.74286 3.117143
+#> 3     8 15.10000 3.999214
+
+•summarise_if() and mutate_if() take a predicate function (a function that returns TRUE or FALSE when given a column). This makes it easy to apply a function only to numeric columns: iris %>% summarise_if(is.numeric, mean)
+#>   Sepal.Length Sepal.Width Petal.Length Petal.Width
+#> 1     5.843333    3.057333        3.758    1.199333
+
+
+All of these functions pass ... on to the individual funs:
+iris %>% summarise_if(is.numeric, mean, trim = 0.25)
+#>   Sepal.Length Sepal.Width Petal.Length Petal.Width
+#> 1     5.802632    3.032895     3.934211    1.230263
+
+A new select_if() allows you to pick columns with a predicate function:
+df <- data_frame(x = 1:3, y = c("a", "b", "c"))
+df %>% select_if(is.numeric)
+#> # A tibble: 3 x 1
+#>       x
+#>   <int>
+#> 1     1
+#> 2     2
+#> 3     3
+df %>% select_if(is.character)
+#> # A tibble: 3 x 1
+#>       y
+#>   <chr>
+#> 1     a
+#> 2     b
+#> 3     c
+
+summarise_each() and mutate_each() will be deprecated in a future release.
