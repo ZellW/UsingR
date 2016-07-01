@@ -1,0 +1,193 @@
+---
+title: "DataTable Munging"
+output: html_document
+---
+
+In this article, we are going to present how to achieve tabular data transformation in an efficient manner. Many people who use R already for machine learning are not aware that data munging can be done faster in R, and that they do not need to use another tool for it.
+
+##High-performance Solution in R
+
+Base R introduced the data.frame class in the year 1997, which was based on S-PLUS before it. Unlike commonly used databases which store data row by row, R data.frame stores the data in memory as a column-oriented structure, thus making it more cache-efficient for column operations which are common in analytics. Additionally, even though R is a functional programming language, it does not enforce that on the developer. Both opportunities have been well addressed by data.table R package, which is available in CRAN repository. It performs quite fast when grouping operations, and is particularly memory efficient by being careful about materializing intermediate data subsets, such as materializing only those columns necessary for a certain task. It also avoids unnecessary copies through its reference semantics while adding or updating columns. The first version of the package has been published in April 2006, significantly improving data.frame performance at that time. The initial package description was: 
+
+> This package does very little. The only reason for its existence is that the white book specifies that data.frame must have rownames. This package defines a new class data.table which operates just like a data.frame, but uses up to 10 times less memory, and can be up to 10 times faster to create (and copy). It also takes the opportunity to allow subset() and with() like expressions inside the []. Most of the code is copied from base functions with the code manipulating row.names removed.
+
+Since then, both data.frame and data.table implementations have been improved, but data.table remains to be incredibly faster than base R. In fact, data.table isn't just faster than base R, but it appears to be one of the fastest open-source data wrangling tool available, competing with tools like Python Pandas, and columnar storage databases or big data apps like Spark. Its performance over distributed shared infrastructure hasn't been yet benchmarked, but being able to have up to two billion rows on a single instance gives promising prospects. Outstanding performance goes hand-in-hand with the functionalities. Additionally, with recent efforts at parallelizing time-consuming parts for incremental performance gains, one direction towards pushing the performance limit seems quite clear. 
+
+##Data Transformation Examples
+Learning R gets a little bit easier because of the fact that it works interactively, so we can follow examples step by step and look at the results of each step at any time. Before we start, let's install the data.table package from CRAN repository.
+```{r}
+#install.packages("data.table")
+library(data.table)
+```
+**Useful hint**: We can open the manual of any function just by typing its name with leading question mark, i.e. ?install.packages. 
+
+###Loading Data into R
+
+There are tons of packages for extracting data from a wide range of formats and databases, which often includes native drivers. We will load data from the CSV file, the most common format for raw tabular data. File used in the following examples can be found here. We don't have to bother about CSV reading performance as the fread function is highly optimized on that.
+In order to use any function from a package, we need to load it with the library call. 
+```{r}
+DT <- fread("../docs/flights14.csv")
+print(DT)
+```
+If our data is not well modeled for further processing, as they need to be reshaped from long-to-wide or wide-to-long (also known as pivot and unpivot) format, we may look at ?dcast and ?melt functions, known from reshape2 package. However, data.table implements faster and memory efficient methods for data.table/data.frame class.
+
+###Querying with data.table Syntax
+####If You’re Familiar with data.frame
+Query data.table is very similar to query data.frame. While filtering in i argument, we can use column names directly without the need to access them with the $ sign, like df[df$col > 1, ]. When providing the next argument j, we provide an expression to be evaluated in the scope of our data.table. To pass a non-expression j argument use with=FALSE. Third argument, not present in data.frame method, defines the groups, making the expression in j to be evaluated by groups. 
+`
+# data.frame
+#DF[DF$col1 > 1L, c("col2", "col3")]
+# data.table
+DT[col1 > 1L, .(col2, col3), ...] # by group using: `by = col4`
+`
+####If You’re Familiar with Databases
+Query data.table in many aspects corresponds to SQL queries that more people might be familiar with. DT below represents data.table object and corresponds to SQLs FROM clause.
+`
+DT[ i = where,
+    j = select | update,
+    by = group by]
+  [ having, ... ]
+  [ order by, ... ]
+  [ ... ] ... [ ... ]
+`
+###Sorting Rows and Re-Ordering Columns
+Sorting data is a crucial transformation for time series, and it is also imports for data extract and presentation. Sort can be achieved by providing the integer vector of row order to i argument, the same way as data.frame. First argument in query order(carrier, -dep_delay) will select data in ascending order on carrier field and descending order on dep_delay measure. Second argument j, as described in the previous section, defines the columns (or expressions) to be returned and their order. 
+```{r}
+ans <- DT[order(carrier, -dep_delay),
+          .(carrier, origin, dest, dep_delay)]
+head(ans)
+```
+To re-order data by reference, instead of querying data in specific order, we use set* functions. 
+```{r}
+setorder(DT, carrier, -dep_delay)
+leading.cols <- c("carrier","dep_delay")
+setcolorder(DT, c(leading.cols, setdiff(names(DT), leading.cols)))
+print(DT)
+```
+
+Most often, we don't need both the original dataset and the ordered/sorted dataset. By default, the R language, similar to other functional programming languages, will return sorted data as new object, and thus will require twice as much memory as sorting by reference.
+
+###Subset Queries
+Let's create a subset dataset for flight origin “JFK” and month from 6 to 9. In the second argument, we subset results to listed columns, adding one calculated variable sum_delay.
+```{r}
+ans <- DT[origin == "JFK" & month %in% 6:9,
+          .(origin, month, arr_delay, dep_delay, sum_delay = arr_delay + dep_delay)]
+head(ans)
+```
+
+By default, when subsetting dataset on single column data.table will automatically create an index for that column. This results in real-time answers on any further filtering calls on that column.
+
+###Update Dataset
+
+Adding a new column by reference is performed using the := operator, it assigns a variable into dataset in place. This avoids in-memory copy of dataset, so we don't need to assign results to each new variable.
+```{r}
+DT[, sum_delay := arr_delay + dep_delay]
+head(DT)
+```
+
+To add more variables at once, we can use DT[,:=(sum_delay = arr_delay + dep_delay)] syntax, similar to .(sum_delay = arr_delay + dep_delay) when querying from dataset. 
+It is possible to sub-assign by reference, updating only particular rows in place, just by combining with i argument.
+```{r}
+DT[origin=="JFK",
+   distance := NA]
+head(DT)
+```
+
+###Aggregate Data
+To aggregate data, we provide the third argument by to the square bracket. Then, in j we need to provide aggregate function calls, so the data can be actually aggregated. The .N symbol used in the j argument corresponds to the number of all observations in each group. As previously mentioned, aggregates can be combined with subsets on rows and selecting columns.
+```{r}
+ans <- DT[,
+          .(m_arr_delay = mean(arr_delay),
+            m_dep_delay = mean(dep_delay),
+            count = .N),
+          .(carrier, month)]
+head(ans)
+```
+
+Often, we may need to compare a value of a row to its aggregate over a group. In SQL, we apply aggregates over partition by: AVG(arr_delay) OVER (PARTITION BY carrier, month). 
+```{r}
+ans <- DT[,
+          .(arr_delay, carrierm_mean_arr = mean(arr_delay),
+            dep_delay, carrierm_mean_dep = mean(dep_delay)),
+          .(carrier, month)]
+head(ans)
+```
+If we don't want to query data with those aggregates, and instead just put them into actual table updating by reference, we can accomplish that with := operator. This avoids the in-memory copy of the dataset, so we don't need to assign results to the new variable.
+```{r}
+DT[,
+   `:=`(carrierm_mean_arr = mean(arr_delay),
+        carrierm_mean_dep = mean(dep_delay)),
+   .(carrier, month)]
+head(DT)
+```
+
+###Join Datasets
+Base R joining and merging of datasets is considered a special type of subset operation. We provide a dataset to which we want to join in the first square bracket argument i. For each row in dataset provided to i, we match rows from the dataset in which we use [. If we want to keep only matching rows (inner join), then we pass an extra argument nomatch = 0L. We use on argument to specify columns on which we want to join both datasets.
+```{r}
+# create reference subset
+carrierdest <- DT[, .(count=.N), .(carrier, dest) # count by carrier and dest
+                  ][1:10                        # just 10 first groups
+                    ]                           # chaining `[...][...]` as subqueries
+print(carrierdest)
+
+# outer join
+ans <- carrierdest[DT, on = c("carrier","dest")]
+print(ans)
+
+# inner join
+ans <- DT[carrierdest,                # for each row in carrierdest
+          nomatch = 0L,               # return only matching rows from both tables
+          on = c("carrier","dest")]   # joining on columns carrier and dest
+print(ans)
+```
+Be aware that because of the consistency to base R subsetting, the outer join is by default RIGHT OUTER. If we are looking for LEFT OUTER, we need to swap the tables, as in the example above. Exact behavior can also be easily controlled in merge data.table method, using the same API as base R merge data.frame.
+
+If we want to simply lookup the column(s) to our dataset, we can efficiently do it with := operator in j argument while joining. The same way as we sub-assign by reference, as described in the Update dataset section, we just now add a column by reference from the dataset to which we join. This avoids the in-memory copy of data, so we don't need to assign results into new variables.
+```{r}
+DT[carrierdest,                     # data.table to join with
+   lkp.count := count,              # lookup `count` column from `carrierdest`
+   on = c("carrier","dest")]        # join by columns
+head(DT)
+```
+
+For **aggregate while join**, use by = .EACHI. It performs join that won't materialize intermediate join results and will apply aggregates on the fly, making it memory efficient.
+
+**Rolling join** is an uncommon feature, designed for dealing with ordered data. It fits perfectly for processing temporal data, and time series in general. It basically roll matches in join condition to next matching value. Use it by providing the roll argument when joining.
+
+**Fast overlap join** joins datasets based on periods and its overlapping handling by using various overlaping operators: any, within, start, end.
+
+A **non-equi join** feature to join datasets using non-equal condition is currently being developed.
+
+##Profiling Data
+
+When exploring our dataset, we may sometimes want to collect technical information on the subject, to better understand the quality of the data. 
+###Descriptive Statistics
+```{r}
+summary(DT)
+```
+
+###Cardinality
+We can check the uniqueness of data by using uniqueN function and apply it on every column. Object .SD in the query below corresponds to Subset of the Data.table:
+```{r}
+DT[, lapply(.SD, uniqueN)]
+```
+
+###NA Ratio
+To calculate the ratio of unknown values (NA in R, and NULL in SQL) for each column, we provide the desired function to apply on every column.
+```{r}
+DT[, lapply(.SD, function(x) sum(is.na(x))/.N)]
+```
+
+###Exporting Data
+Fast export tabular data to CSV format is also provided by the data.table package.
+```{r}
+#tmp.csv <- tempfile(fileext=".csv")
+#fwrite(DT, tmp.csv)
+# preview exported data
+#cat(system(paste("head -3",tmp.csv), intern=TRUE), sep="\n")
+```
+At the time of writing this, the *fwrite function hasn't yet been published to the CRAN repository*. To use it we need to install data.table development version, otherwise we can use base R write.csv function, but don't expect it to be fast.
+
+##Summary
+This article provides chosen examples for efficient tabular data transformation in R using the data.table package. The actual figures on performance can be examined by looking for reproducible benchmarks. I published a summarized blog post about data.table solutions for the top 50 rated StackOverflow questions for the R language called Solve common R problems efficiently with data.table, where you can find a lot of figures and reproducible code. The package data.table uses native implementation of fast radix ordering for its grouping operations, and binary search for fast subsets/joins. This radix ordering has been incorporated into base R from version 3.3.0. Additionally, the algorithm was recently implemented into H2O machine learning platform and parallelized over H2O cluster, enabling efficient big joins on 10B x 10B rows.
+To leave a comment for the author, please follow the link and comment on their blog: Jan Gorecki - R.
