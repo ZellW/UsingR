@@ -1,0 +1,19 @@
+title: 'Introductory: Fitting a Neural Network in R'
+output:
+  html_document:
+    highlight: pygments
+    theme: spacelab
+    toc: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+header-includes: \usepackage{graphicx} \usepackage{mathtools}
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+if(!require(easypackages)){
+    install.packages("easypackages")
+    library(easypackages)
+}
+packages("MASS", "neuralnet", "boot", prompt = FALSE)
+```
+
